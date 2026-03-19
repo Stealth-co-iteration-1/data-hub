@@ -44,3 +44,21 @@ class DataRepository(Protocol):
             The record data or None if not found
         """
         ...
+
+    async def query(
+        self,
+        model: str,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Query records with optional filters.
+
+        Args:
+            model: Model name to query
+            filters: Optional filter conditions (column: value)
+            limit: Maximum records to return (enforced)
+
+        Returns:
+            List of matching records as plain dicts
+        """
+        ...
