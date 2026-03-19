@@ -18,7 +18,9 @@ async def client():
     # This simulates the lifespan without needing a real database file
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     original_engine = getattr(app.state, "engine", None)
+    original_backend = getattr(app.state, "backend", None)
     app.state.engine = engine
+    app.state.backend = "sqlite"
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -29,6 +31,8 @@ async def client():
     await engine.dispose()
     if original_engine is not None:
         app.state.engine = original_engine
+    if original_backend is not None:
+        app.state.backend = original_backend
 
 
 class TestHealthCheck:
@@ -58,7 +62,9 @@ class TestHealthCheck:
         response = await client.get("/health")
 
         data = response.json()
-        response_text = str(data).lower()
+        # Remove backend field for secret check - "sqlite" in backend is expected
+        data_without_backend = {k: v for k, v in data.items() if k != "backend"}
+        response_text = str(data_without_backend).lower()
 
         # Should not contain database connection info
         assert "sqlite" not in response_text
