@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -23,10 +24,32 @@ from src.adapters.driven.sqlite.models import Base
 
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+
+# CRITICAL: Read DATABASE_URL from environment first
+# This allows the same migrations to run against SQLite or PostgreSQL
+# based on environment configuration, without modifying alembic.ini
+def get_database_url() -> str:
+    """Get database URL from environment or fall back to alembic.ini.
+
+    Priority:
+    1. DATABASE_URL environment variable
+    2. sqlalchemy.url from alembic.ini
+
+    Returns normalized URL with async driver.
+    """
+    env_url = os.environ.get("DATABASE_URL")
+    if env_url:
+        # Normalize URL for async driver
+        if env_url.startswith("sqlite://") and "+aiosqlite" not in env_url:
+            return env_url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+        if env_url.startswith("postgresql://") and "+asyncpg" not in env_url:
+            return env_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if env_url.startswith("postgres://"):
+            return env_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return env_url
+
+    # Fall back to alembic.ini
+    return config.get_main_option("sqlalchemy.url")
 
 
 def run_migrations_offline() -> None:
@@ -41,7 +64,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -65,9 +88,12 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
+    # Override sqlalchemy.url in config section with environment URL
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = get_database_url()
 
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
