@@ -1,0 +1,43 @@
+[project]
+name = "data-hub"
+version = "0.1.0"
+description = "Data webhook ingestion platform with strict validation"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.12.5",
+    "sqlalchemy[asyncio]>=2.0.48",
+    "aiosqlite>=0.20",
+    "alembic>=1.18.4",
+    "fastapi[standard]>=0.135.1",
+    "uvicorn>=0.42.0",
+    "structlog>=25.5.0",
+    "prometheus-client>=0.24.1",
+    "pydantic-settings>=2.13.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "pyright>=1.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]
