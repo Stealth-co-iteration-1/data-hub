@@ -44,7 +44,7 @@ Plans:
 
 **Milestone Goal:** Production-ready storage with configurable SQLite/PostgreSQL backends and SQL-based query capability via kernel command and HTTP endpoint.
 
-- [ ] **Phase 4: PostgreSQL Backend** - PostgreSQL adapter with asyncpg, ENV-based backend factory, migration CI hardening
+- [x] **Phase 4: PostgreSQL Backend** - PostgreSQL adapter with asyncpg, ENV-based backend factory, migration CI hardening
 - [ ] **Phase 5: Query Capability** - QueryData kernel command, both adapters implement query(), injection-safe HTTP endpoint
 
 ## Phase Details
@@ -63,8 +63,8 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Add asyncpg dependency, extend DataRepository Protocol with query(), create FakeDataRepository
-- [ ] 04-02-PLAN.md — Implement PostgresDataRepository with full Protocol compliance and idempotent inserts
-- [ ] 04-03-PLAN.md — Wire backend factory, update dependencies.py, ENV-aware migrations, health backend reporting
+- [x] 04-02-PLAN.md — Implement PostgresDataRepository with full Protocol compliance and idempotent inserts
+- [x] 04-03-PLAN.md — Wire backend factory, update dependencies.py, ENV-aware migrations, health backend reporting
 
 ### Phase 5: Query Capability
 **Goal**: Stored data is queryable via a parameterized SQL interface through both the kernel and an HTTP endpoint, with injection prevention and unconditional result limits enforced.
@@ -76,12 +76,12 @@ Plans:
   3. A query with no limit parameter still returns at most DEFAULT_QUERY_LIMIT records — the cap is enforced unconditionally
   4. Passing a raw SQL string as a filter value does not execute it — only bindparams are accepted from callers
   5. The QueryData kernel command has zero imports from sqlalchemy, asyncpg, or any external dependency
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: QueryData command and handler in kernel, FakeDataRepository query() implementation
-- [ ] 05-02: SQLiteDataRepository.query() and PostgresDataRepository.query() implementations
-- [ ] 05-03: POST /query FastAPI route with Pydantic validation, LIMIT enforcement, allowlist identifier guard
+- [ ] 05-01-PLAN.md — QueryData query and QueryHandler in kernel, kernel exports, unit tests
+- [ ] 05-02-PLAN.md — SQLiteDataRepository.query() implementation, both backends integration tests
+- [ ] 05-03-PLAN.md — POST /query/{model} HTTP endpoint with security guardrails, Problem Details errors
 
 ## Progress
 
@@ -92,5 +92,5 @@ Plans:
 | 1. Foundation & Kernel | v0.0.1 | 4/4 | Complete | 2026-03-18 |
 | 2. Persistence & Data Flow | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 3. Webhook Transport & Observability | v0.0.1 | 3/3 | Complete | 2026-03-18 |
-| 4. PostgreSQL Backend | 2/3 | In Progress|  | - |
+| 4. PostgreSQL Backend | v0.1.0 | 3/3 | Complete | 2026-03-19 |
 | 5. Query Capability | v0.1.0 | 0/3 | Not started | - |
