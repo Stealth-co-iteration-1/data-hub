@@ -2,7 +2,7 @@
 
 ## What This Is
 
-The data component of the Staq system — a Python service that receives raw integration data from external sources via Nango webhooks, validates it against schemas, and persists it to the database. Built with a clean kernel/transport separation where the kernel contains pure business logic with no external dependencies. Uses SQLite for v1 development, with PostgreSQL planned for production via hexagonal architecture swap.
+The data component of the Staq system — a Python service that receives raw integration data from external sources via Nango webhooks, validates it against schemas, and persists it to the database. Built with a clean kernel/transport separation where the kernel contains pure business logic with no external dependencies. Uses SQLite for v0.0.1 development, with PostgreSQL planned for production via hexagonal architecture swap.
 
 ## Core Value
 
@@ -34,8 +34,8 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Out of Scope
 
-- Event consumers — deferred to v3.0
-- Schema drift detection — deferred to v3.0
+- Event consumers — deferred to future milestone
+- Schema drift detection — deferred to future milestone
 - Real-time streaming — batch/webhook model for now
 
 ## Context
@@ -71,7 +71,7 @@ Data from connected integrations flows reliably into the platform with strict va
 | Structlog with correlation IDs | Request tracing from ingestion through processing for debugging | ✓ Validated (Phase 3) |
 | Prometheus-style metrics | Counters and histograms for operational monitoring | ✓ Validated (Phase 3) |
 
-## Current State (v1.0 Shipped)
+## Current State (v0.0.1 Shipped)
 
 **Shipped:** 2026-03-19
 **Codebase:** 3,797 LOC Python (1,697 src + 2,100 tests)
@@ -88,7 +88,7 @@ Data from connected integrations flows reliably into the platform with strict va
 - InMemoryEventPublisher stores events that are never consumed
 - session.py helpers unused in production (app.py reimplements inline)
 
-## Current Milestone: v2.0 Production Storage & Query
+## Current Milestone: v0.1.0 Production Storage & Query
 
 **Goal:** Production-ready storage with configurable backends (SQLite/PostgreSQL) and SQL-based query capability
 
@@ -100,4 +100,4 @@ Data from connected integrations flows reliably into the platform with strict va
 - Query HTTP endpoint via FastAPI
 
 ---
-*Last updated: 2026-03-19 after v2.0 milestone started*
+*Last updated: 2026-03-19 after v0.1.0 milestone started*

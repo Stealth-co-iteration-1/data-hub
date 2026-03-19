@@ -1,6 +1,6 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
+milestone: v0.1.0
 milestone_name: Production Storage & Query
 status: roadmap_created
 last_updated: "2026-03-19"
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core Value**: Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-**Current Focus**: v2.0 Phase 4 — PostgreSQL Backend (not yet planned)
+**Current Focus**: v0.1.0 Phase 4 — PostgreSQL Backend (not yet planned)
 
 **Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern
 
@@ -35,16 +35,16 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 Phase: 4 of 5 (PostgreSQL Backend)
 Plan: — (not yet planned)
 Status: Ready to plan
-Last activity: 2026-03-19 — v2.0 roadmap created (2 phases, 11 requirements mapped)
+Last activity: 2026-03-19 — v0.1.0 roadmap created (2 phases, 11 requirements mapped)
 
-Progress: [░░░░░░░░░░] 0% (v2.0)
+Progress: [░░░░░░░░░░] 0% (v0.1.0)
 
 ---
 
 ## Performance Metrics
 
-**v1.0 completed:** 3 phases, 10 plans, 80 tests, 3,797 LOC
-**v2.0 velocity:** N/A (no plans completed yet)
+**v0.0.1 completed:** 3 phases, 10 plans, 80 tests, 3,797 LOC
+**v0.1.0 velocity:** N/A (no plans completed yet)
 
 ---
 
@@ -52,7 +52,7 @@ Progress: [░░░░░░░░░░] 0% (v2.0)
 
 ### Key Decisions
 
-**2026-03-19**: v2.0 roadmap — 2 phases at coarse granularity
+**2026-03-19**: v0.1.0 roadmap — 2 phases at coarse granularity
 
 - Phase 4: PostgreSQL Backend (PGRS-01-03, CONF-01-02)
 - Phase 5: Query Capability (QURY-01-06)
@@ -84,7 +84,7 @@ Progress: [░░░░░░░░░░] 0% (v2.0)
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: v2.0 roadmap created
+Stopped at: v0.1.0 roadmap created
 Resume file: None
 
 **Next step**: `/gsd:plan-phase 4`

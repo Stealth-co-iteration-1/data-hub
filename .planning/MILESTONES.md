@@ -1,6 +1,6 @@
 # Milestones
 
-## v1.0 MVP (Shipped: 2026-03-19)
+## v0.0.1 MVP (Shipped: 2026-03-19)
 
 **Delivered:** Data webhook ingestion platform with strict validation — receives Nango webhooks, validates against schemas, persists to SQLite with audit trail.
 
@@ -19,8 +19,8 @@
 - Hexagonal architecture enabling future PostgreSQL swap without kernel changes
 
 **Archives:**
-- [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- [v1.0-REQUIREMENTS.md](milestones/v1.0-REQUIREMENTS.md)
-- [v1.0-MILESTONE-AUDIT.md](milestones/v1.0-MILESTONE-AUDIT.md)
+- [v0.0.1-ROADMAP.md](milestones/v0.0.1-ROADMAP.md)
+- [v0.0.1-REQUIREMENTS.md](milestones/v0.0.1-REQUIREMENTS.md)
+- [v0.0.1-MILESTONE-AUDIT.md](milestones/v0.0.1-MILESTONE-AUDIT.md)
 
 ---

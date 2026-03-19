@@ -3,9 +3,9 @@
 **Defined:** 2026-03-19
 **Core Value:** Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-## v2.0 Requirements
+## v0.1.0 Requirements
 
-Requirements for v2.0 milestone: Production Storage & Query.
+Requirements for v0.1.0 milestone: Production Storage & Query.
 
 ### PostgreSQL
 
@@ -29,7 +29,7 @@ Requirements for v2.0 milestone: Production Storage & Query.
 
 ## Future Requirements
 
-Deferred to v3.0+. Tracked but not in current roadmap.
+Deferred to future milestone+. Tracked but not in current roadmap.
 
 ### Resilience
 
@@ -62,8 +62,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | ORM query builder in kernel | Leaks ORM types; keep kernel SQL as strings with params |
 | Free-form SQL from HTTP callers | SQL injection risk; callers provide structured params |
 | Database-specific query syntax | Keep queries simple enough for both backends |
-| Event consumers | Deferred to v3.0 |
-| Schema drift detection | Deferred to v3.0 |
+| Event consumers | Deferred to future milestone |
+| Schema drift detection | Deferred to future milestone |
 
 ## Traceability
 
@@ -84,10 +84,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QURY-06 | Phase 5 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 11 total
+- v0.1.0 requirements: 11 total
 - Mapped to phases: 11
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after roadmap v2.0 created*
+*Last updated: 2026-03-19 after roadmap v0.1.0 created*

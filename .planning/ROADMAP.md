@@ -2,13 +2,13 @@
 
 ## Milestones
 
-- [x] **v1.0 MVP** - Phases 1-3 (shipped 2026-03-19)
-- [ ] **v2.0 Production Storage & Query** - Phases 4-5 (in progress)
+- [x] **v0.0.1 MVP** - Phases 1-3 (shipped 2026-03-19)
+- [ ] **v0.1.0 Production Storage & Query** - Phases 4-5 (in progress)
 
 ## Phases
 
 <details>
-<summary>v1.0 MVP (Phases 1-3) - SHIPPED 2026-03-19</summary>
+<summary>v0.0.1 MVP (Phases 1-3) - SHIPPED 2026-03-19</summary>
 
 ### Phase 1: Foundation & Kernel
 **Goal**: Pure kernel with port interfaces, command handling, and schema validation in place
@@ -40,7 +40,7 @@ Plans:
 
 </details>
 
-### v2.0 Production Storage & Query (In Progress)
+### v0.1.0 Production Storage & Query (In Progress)
 
 **Milestone Goal:** Production-ready storage with configurable SQLite/PostgreSQL backends and SQL-based query capability via kernel command and HTTP endpoint.
 
@@ -51,7 +51,7 @@ Plans:
 
 ### Phase 4: PostgreSQL Backend
 **Goal**: The service runs against PostgreSQL via DATABASE_URL with idempotent inserts, and the backend is selected automatically — no code changes required to switch between SQLite and PostgreSQL.
-**Depends on**: Phase 3 (v1.0 complete)
+**Depends on**: Phase 3 (v0.0.1 complete)
 **Requirements**: PGRS-01, PGRS-02, PGRS-03, CONF-01, CONF-02
 **Success Criteria** (what must be TRUE):
   1. Setting DATABASE_URL to a PostgreSQL connection string causes all data operations to target PostgreSQL without any code change
@@ -89,8 +89,8 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Foundation & Kernel | v1.0 | 4/4 | Complete | 2026-03-18 |
-| 2. Persistence & Data Flow | v1.0 | 3/3 | Complete | 2026-03-18 |
-| 3. Webhook Transport & Observability | v1.0 | 3/3 | Complete | 2026-03-18 |
-| 4. PostgreSQL Backend | v2.0 | 0/3 | Not started | - |
-| 5. Query Capability | v2.0 | 0/3 | Not started | - |
+| 1. Foundation & Kernel | v0.0.1 | 4/4 | Complete | 2026-03-18 |
+| 2. Persistence & Data Flow | v0.0.1 | 3/3 | Complete | 2026-03-18 |
+| 3. Webhook Transport & Observability | v0.0.1 | 3/3 | Complete | 2026-03-18 |
+| 4. PostgreSQL Backend | v0.1.0 | 0/3 | Not started | - |
+| 5. Query Capability | v0.1.0 | 0/3 | Not started | - |
