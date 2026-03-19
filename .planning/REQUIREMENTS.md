@@ -15,8 +15,8 @@ Requirements for v0.1.0 milestone: Production Storage & Query.
 
 ### Backend Configuration
 
-- [ ] **CONF-01**: Repository factory creates correct adapter based on DATABASE_URL scheme
-- [ ] **CONF-02**: SQLite and PostgreSQL adapters coexist without code changes to switch
+- [x] **CONF-01**: Repository factory creates correct adapter based on DATABASE_URL scheme
+- [x] **CONF-02**: SQLite and PostgreSQL adapters coexist without code changes to switch
 
 ### Query
 
@@ -74,8 +74,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PGRS-01 | Phase 4 | Complete |
 | PGRS-02 | Phase 4 | Complete |
 | PGRS-03 | Phase 4 | Complete |
-| CONF-01 | Phase 4 | Pending |
-| CONF-02 | Phase 4 | Pending |
+| CONF-01 | Phase 4 | Complete |
+| CONF-02 | Phase 4 | Complete |
 | QURY-01 | Phase 5 | Pending |
 | QURY-02 | Phase 5 | Pending |
 | QURY-03 | Phase 5 | Pending |

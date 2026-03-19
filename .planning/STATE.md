@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: Production Storage & Query
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-19T16:08:38Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-19T16:14:30Z"
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-19
-**Status**: Executing Phase 4 — Plan 2 of 3 complete
+**Status**: Phase 4 complete — All 3 plans done
 
 ---
 
@@ -33,20 +33,27 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 04 (postgresql-backend) — EXECUTING
-Plan: 3 of 3 (Plan 2 complete)
+Phase: 04 (postgresql-backend) — COMPLETE
+Plan: 3 of 3 (All plans complete)
 
 ## Performance Metrics
 
 **v0.0.1 completed:** 3 phases, 10 plans, 80 tests, 3,797 LOC
 **v0.1.0 velocity:** Plan 04-01 completed in 2 min (3 tasks, 5 files, 87 tests)
 **v0.1.0 velocity:** Plan 04-02 completed in 2 min (3 tasks, 3 files, 339 LOC)
+**v0.1.0 velocity:** Plan 04-03 completed in 4 min (6 tasks, 8 files, 102 tests)
 
 ---
 
 ## Accumulated Context
 
 ### Key Decisions
+
+**2026-03-19**: Repository factory with URL scheme detection for backend switching
+
+- RepositoryBundle container holds repository, engine, backend metadata
+- SUPPORTED_SCHEMES maps all URL variants to canonical backend names
+- Fail fast on unsupported schemes with helpful error message
 
 **2026-03-19**: PostgresDataRepository reuses ORM models from sqlite adapter
 
@@ -86,14 +93,14 @@ None (asyncpg added in Plan 04-01)
 
 ## Session Continuity
 
-Last session: 2026-03-19T16:08:38Z
-Stopped at: Completed 04-02-PLAN.md
-Resume file: .planning/phases/04-postgresql-backend/04-02-SUMMARY.md
+Last session: 2026-03-19T16:14:30Z
+Stopped at: Completed 04-03-PLAN.md
+Resume file: .planning/phases/04-postgresql-backend/04-03-SUMMARY.md
 
-**Next step**: Execute Plan 04-03 (Factory wiring & ENV-based backend selection)
+**Next step**: Phase 4 complete. Ready to start Phase 5 (Query Capability)
 
-**Critical pitfalls to avoid in Phase 4:**
+**Phase 4 Critical Pitfalls Resolved:**
 
-1. dependencies.py hardcodes SQLiteDataRepository — factory must replace it
-2. alembic.ini hardcodes SQLite URL — env.py must read DATABASE_URL env var
-3. PostgreSQL adapter must use sqlalchemy.dialects.postgresql.insert (not sqlite dialect import)
+1. dependencies.py now uses request.app.state.repository (factory-created)
+2. migrations/env.py now reads DATABASE_URL from environment first
+3. PostgresDataRepository uses sqlalchemy.dialects.postgresql.insert
