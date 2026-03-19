@@ -26,11 +26,14 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Active
 
-- [ ] PostgreSQL adapter with asyncpg driver
-- [ ] Configurable storage backend (sqlite/postgres via ENV)
 - [ ] QueryData command with SQL-based interface
 - [ ] DataRepository.query() read port
 - [ ] Query HTTP endpoint
+
+### Validated (v0.1.0)
+
+- [x] PostgreSQL adapter with asyncpg driver — *Validated in Phase 4: PostgreSQL Backend*
+- [x] Configurable storage backend (sqlite/postgres via ENV) — *Validated in Phase 4: PostgreSQL Backend*
 
 ### Out of Scope
 
@@ -70,6 +73,8 @@ Data from connected integrations flows reliably into the platform with strict va
 | FastAPI with fast-ack | 202 response before background processing for webhook reliability | ✓ Validated (Phase 3) |
 | Structlog with correlation IDs | Request tracing from ingestion through processing for debugging | ✓ Validated (Phase 3) |
 | Prometheus-style metrics | Counters and histograms for operational monitoring | ✓ Validated (Phase 3) |
+| PostgreSQL adapter via factory | Scheme-based backend selection from DATABASE_URL | ✓ Validated (Phase 4) |
+| Repository factory pattern | Create correct adapter based on URL scheme, fail fast on unknown | ✓ Validated (Phase 4) |
 
 ## Current State (v0.0.1 Shipped)
 
@@ -100,4 +105,4 @@ Data from connected integrations flows reliably into the platform with strict va
 - Query HTTP endpoint via FastAPI
 
 ---
-*Last updated: 2026-03-19 after v0.1.0 milestone started*
+*Last updated: 2026-03-19 after Phase 4 (PostgreSQL Backend) completed*
