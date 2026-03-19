@@ -71,23 +71,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PGRS-01 | — | Pending |
-| PGRS-02 | — | Pending |
-| PGRS-03 | — | Pending |
-| CONF-01 | — | Pending |
-| CONF-02 | — | Pending |
-| QURY-01 | — | Pending |
-| QURY-02 | — | Pending |
-| QURY-03 | — | Pending |
-| QURY-04 | — | Pending |
-| QURY-05 | — | Pending |
-| QURY-06 | — | Pending |
+| PGRS-01 | Phase 4 | Pending |
+| PGRS-02 | Phase 4 | Pending |
+| PGRS-03 | Phase 4 | Pending |
+| CONF-01 | Phase 4 | Pending |
+| CONF-02 | Phase 4 | Pending |
+| QURY-01 | Phase 5 | Pending |
+| QURY-02 | Phase 5 | Pending |
+| QURY-03 | Phase 5 | Pending |
+| QURY-04 | Phase 5 | Pending |
+| QURY-05 | Phase 5 | Pending |
+| QURY-06 | Phase 5 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after milestone v2.0 started*
+*Last updated: 2026-03-19 after roadmap v2.0 created*
