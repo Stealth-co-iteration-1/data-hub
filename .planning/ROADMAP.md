@@ -59,12 +59,12 @@ Plans:
   3. Duplicate webhook events sent to PostgreSQL-backed service are silently ignored (no error, no duplicate record)
   4. Alembic migrations run successfully against PostgreSQL — tables are created and the service accepts requests
   5. The /health endpoint reports which backend is active
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: asyncpg dependency, DataRepository Protocol query() extension, FakeDataRepository updated
-- [ ] 04-02: PostgresDataRepository implementing full protocol (add, get, idempotent insert)
-- [ ] 04-03: Backend factory, dependencies.py wiring, migration ENV override, CI hardening
+- [ ] 04-01-PLAN.md — Add asyncpg dependency, extend DataRepository Protocol with query(), create FakeDataRepository
+- [ ] 04-02-PLAN.md — Implement PostgresDataRepository with full Protocol compliance and idempotent inserts
+- [ ] 04-03-PLAN.md — Wire backend factory, update dependencies.py, ENV-aware migrations, health backend reporting
 
 ### Phase 5: Query Capability
 **Goal**: Stored data is queryable via a parameterized SQL interface through both the kernel and an HTTP endpoint, with injection prevention and unconditional result limits enforced.
@@ -92,5 +92,5 @@ Plans:
 | 1. Foundation & Kernel | v0.0.1 | 4/4 | Complete | 2026-03-18 |
 | 2. Persistence & Data Flow | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 3. Webhook Transport & Observability | v0.0.1 | 3/3 | Complete | 2026-03-18 |
-| 4. PostgreSQL Backend | v0.1.0 | 0/3 | Not started | - |
+| 4. PostgreSQL Backend | v0.1.0 | 0/3 | Planned | - |
 | 5. Query Capability | v0.1.0 | 0/3 | Not started | - |
