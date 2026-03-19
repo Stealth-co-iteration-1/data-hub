@@ -3,33 +3,46 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 
+from src.adapters.driven.repository_factory import create_repository
 from src.config.settings import settings
-from src.observability.logging import configure_logging
+from src.observability.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle - logging, DB connection pool.
+    """Manage application lifecycle - logging, DB connection pool, repository.
 
-    Creates the SQLAlchemy engine at startup, disposes at shutdown.
-    Engine and session factory stored in app.state for dependency injection.
+    Creates the repository via factory at startup, disposes engine at shutdown.
+    Repository, engine, and backend type stored in app.state for dependency injection.
     """
     # Configure logging first (before any log calls)
     configure_logging()
 
-    engine: AsyncEngine = create_async_engine(
+    # Create repository bundle via factory (detects backend from URL scheme)
+    bundle = create_repository(
         settings.database_url,
         echo=settings.env == "development",
     )
-    app.state.engine = engine
-    app.state.session_factory = async_sessionmaker(
-        engine,
-        expire_on_commit=False,
+
+    # Store in app.state for dependency injection
+    app.state.repository = bundle.repository
+    app.state.engine = bundle.engine
+    app.state.session_factory = None  # Deprecated - use repository directly
+    app.state.backend = bundle.backend
+
+    logger.info(
+        "startup_complete",
+        backend=bundle.backend,
+        database_url_scheme=settings.database_url.split("://")[0],
     )
+
     yield
-    await engine.dispose()
+
+    await bundle.engine.dispose()
+    logger.info("shutdown_complete")
 
 
 app = FastAPI(
