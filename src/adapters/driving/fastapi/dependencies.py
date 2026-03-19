@@ -12,7 +12,6 @@ from fastapi import Header, HTTPException, Request, status
 
 from src.adapters.driven.event_bus.publisher import InMemoryEventPublisher
 from src.adapters.driven.schema_registry.permissive import PermissiveSchemaRegistry
-from src.adapters.driven.sqlite.repository import SQLiteDataRepository
 from src.config.settings import settings
 from src.kernel.handlers.add_data_handler import AddDataHandler
 
@@ -79,7 +78,7 @@ async def get_add_data_handler(request: Request) -> AddDataHandler:
     """Dependency injection for AddDataHandler.
 
     Creates handler with:
-    - SQLiteDataRepository from app.state.session_factory
+    - Repository from app.state (SQLite or PostgreSQL based on DATABASE_URL)
     - InMemoryEventPublisher (shared instance)
     - PermissiveSchemaRegistry (v1 pass-through)
 
@@ -89,7 +88,8 @@ async def get_add_data_handler(request: Request) -> AddDataHandler:
     Returns:
         Configured AddDataHandler instance
     """
-    repository = SQLiteDataRepository(request.app.state.session_factory)
+    # Use pre-created repository from app.state (created by factory in lifespan)
+    repository = request.app.state.repository
     schema_registry = get_schema_registry()
 
     return AddDataHandler(
