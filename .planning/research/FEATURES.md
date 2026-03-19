@@ -1,261 +1,195 @@
 # Feature Research
 
-**Domain:** Data Ingestion/Data Hub Platform (Webhook-driven)
-**Researched:** 2026-03-18
-**Confidence:** MEDIUM-HIGH
+**Domain:** Data Hub Platform — v2.0 Production Storage & Query
+**Researched:** 2026-03-19
+**Confidence:** HIGH
+
+> **Milestone scope:** This file focuses on NEW features for v2.0. The v1.0 features
+> (AddData, SQLite persistence, webhook ingestion, audit trail, HMAC verification) are
+> already validated and are treated as existing dependencies below.
+
+---
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = product feels incomplete.
+Features users assume exist. Missing these = product feels incomplete for v2.0.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Reliable data persistence** | Core function of any data hub - if data comes in, it must be stored reliably | LOW | PostgreSQL handles this; focus on connection pooling and transaction management |
-| **Schema validation** | Industry standard in 2026 - bad data rejected at entry, not discovered downstream | MEDIUM | Must validate against expected schema before persistence; reject malformed data |
-| **Webhook receipt acknowledgment** | Fast 2xx response within timeout window (typically <30s) to prevent retries | LOW | Acknowledge receipt immediately; process asynchronously |
-| **Basic error handling** | Failed operations must be logged and surfaced, not silently dropped | MEDIUM | Structured logging with error details; consider DLQ pattern for retry |
-| **Connection management** | Multiple data sources sending webhooks simultaneously | LOW | FastAPI handles this; ensure proper connection pooling to PostgreSQL |
-| **Data type support** | Handle common data types (strings, numbers, booleans, dates, nested objects) | MEDIUM | JSON flexibility for semi-structured data from various integrations |
-| **Audit trail** | When data arrived, from which source, processing status | MEDIUM | Timestamp, source_id, status fields; enables debugging and compliance |
-| **Health check endpoint** | Monitoring systems expect /health or /ready endpoints | LOW | FastAPI route returning service status and DB connectivity |
+| **PostgreSQL adapter (asyncpg)** | Production deployments require PostgreSQL, not SQLite; any production data service is expected to run on a server-grade DB | MEDIUM | `postgresql+asyncpg://` URL; `sqlalchemy.dialects.postgresql.insert` for ON CONFLICT; replaces `sqlite_insert` import in repository |
+| **ENV-based backend selection** | Standard twelve-factor app practice; operators switch `DATABASE_URL` to change backend | LOW | Already works via `settings.database_url`; needs a factory that routes to the right repository class based on URL scheme |
+| **Idempotent inserts on PostgreSQL** | SQLite adapter already has this; users expect parity; duplicate webhooks are a production reality | MEDIUM | Use `sqlalchemy.dialects.postgresql.insert(...).on_conflict_do_nothing(index_elements=["event_id"])` — parallel to SQLite path |
+| **QueryData command in kernel** | Any service storing data must expose a way to read it back; required before query HTTP endpoint | MEDIUM | Pure Python in `kernel/commands/` or `kernel/queries/`; parameterized SQL via `text()` with bound params; zero ORM leakage |
+| **DataRepository.query() read port** | Port must be extended before adapters can implement it; kernel can't call `query()` if the protocol doesn't declare it | LOW | Add `query(sql: str, params: dict) -> list[dict]` to the `DataRepository` Protocol in `kernel/ports/repository.py` |
+| **Query HTTP endpoint** | Data stored but not retrievable is useless; consumers of the hub need read access | MEDIUM | `POST /query` or `GET /data` with Pydantic-validated body; returns JSON list |
+| **Alembic migration parity** | PostgreSQL DDL must match SQLite schema exactly; missing migration means data loss risk on first deploy | MEDIUM | Models already defined; confirm Alembic generates correct PG-compatible DDL; JSON column handled natively in PG |
+| **Connection pool configuration** | PostgreSQL is a server process with a connection limit (default 100); async apps need pool_size + max_overflow | LOW | `create_async_engine(..., pool_size=5, max_overflow=10)` for PG; SQLite doesn't pool so this is PG-only |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required, but valuable.
+Features that elevate v2.0 beyond a minimal adapter swap.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Idempotent processing** | Handles duplicate webhooks gracefully - same event multiple times = same result | MEDIUM | Use event IDs or content hashes; prevents duplicate records from retry storms |
-| **Schema drift detection** | Alerts when incoming data shape changes unexpectedly | HIGH | Compare incoming schema against stored schema; notify on mismatches before they break pipelines |
-| **Generic AddData command** | Single command handles any table/schema - no per-integration custom code | MEDIUM | Flexibility to add new integrations without code changes; leverages dynamic schema validation |
-| **Event emission on success** | Decoupled notification allows other services to react to new data | LOW | DataAdded event pattern already in design; enables workflow orchestration |
-| **Kernel/transport separation** | Pure business logic isolated from HTTP/DB concerns | MEDIUM | Enables comprehensive unit testing without infrastructure; already in design constraints |
-| **Column-level lineage tracking** | Track which source field maps to which destination column | HIGH | Valuable for debugging and compliance; helps trace data provenance |
-| **Automatic retry with exponential backoff** | Internal retry logic for transient failures before DLQ | MEDIUM | Resilient to temporary DB issues; 3-5 attempts with jitter before failing |
-| **Data quality metrics** | Track validation failure rates, schema drift incidents, processing latency | MEDIUM | Operational visibility into data health; enables proactive issue detection |
+| **Transparent backend swap with zero kernel changes** | Hexagonal architecture proof-of-concept; the kernel's handlers and commands don't know which DB is running | LOW | Factory creates correct repository class; kernel imports only the Protocol; this is the design goal of the architecture |
+| **Parameterized SQL queries (injection-safe)** | Raw SQL queries over webhook data are high-risk if user input reaches the query; parameterized binding eliminates this | LOW | SQLAlchemy `text("SELECT ... WHERE model_name = :model", params={"model": value})`; bindparams enforced at protocol level |
+| **Shared ORM models across adapters** | Same `DataRecord` and `AuditLog` model classes work for both SQLite and PostgreSQL; no model duplication | LOW | SQLAlchemy's `DeclarativeBase` generates compatible DDL for both dialects from same Python model; already nearly true |
+| **Query results as plain dicts** | Consistent with existing pattern of never leaking ORM objects to kernel; query results are `list[dict]` | LOW | Iterate over `result.mappings()` and return `[dict(row) for row in result]`; same discipline as `repository.get()` |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Real-time streaming** | "We need instant data" | Adds massive complexity for minimal business value in batch analytics context | Webhook + async processing provides <5s latency which is sufficient for most use cases |
-| **Complex transformation during ingestion** | "Transform as we ingest" | Couples data collection to business logic; hard to change transforms without reprocessing | Store raw data; transform downstream in dedicated service/dbt models (ELT pattern) |
-| **General HTTP API for queries** | "We need to query the data" | Scope creep - this is a data warehouse concern, not ingestion | Defer to dedicated query service or direct database access; ingestion focuses on reliable writes |
-| **Multiple storage backends** | "We might need Snowflake/BigQuery later" | Premature abstraction increases complexity without validated need | PostgreSQL for v1; migrate if/when proven necessary (YAGNI principle) |
-| **Custom transformation per integration** | "Each source needs special handling" | Becomes unmaintainable as integrations grow; 50 integrations = 50 custom pipelines | Generic schema validation + raw storage; handle special cases in downstream transforms |
-| **Synchronous validation of entire payload** | "We must validate everything before responding" | Large payloads timeout webhooks; provider retries cause duplicates | Fast ack → async validation → DLQ for failures; idempotent processing handles retries |
-| **Built-in data warehouse** | "One platform for everything" | Platform sprawl - trying to be ingestion + warehouse + query engine | Focus on excellent ingestion; integrate with dedicated warehouse (single responsibility) |
-| **Low-code/no-code UI** | "Business users should configure pipelines" | 80% of development time goes to UI for 20% of use cases | Code-based configuration versioned in Git; more maintainable for technical team |
+| **ORM query builder in kernel** | "Let's expose SQLAlchemy selects through the port" | Leaks ORM types into kernel, violating kernel purity constraint; kernel becomes coupled to SQLAlchemy | Keep kernel SQL as `str` with named bind params; adapter executes with `text()` |
+| **Free-form SQL string from HTTP callers** | "Give callers full SQL control" | SQL injection surface is huge; any user input directly in a query string is dangerous; also couples callers to schema | Expose structured filter params (model_name, connection_id, date range); build SQL internally; never accept raw SQL from HTTP |
+| **Separate PostgreSQL models** | "Duplicate the models.py for postgres-specific types" | Maintenance burden; two sources of truth for same schema | Single models.py in shared location; SQLAlchemy handles dialect-specific DDL automatically |
+| **Synchronous Alembic env for async engine** | "Just add `run_sync` wrappers everywhere" | Works but creates async/sync impedance mismatch warnings; harder to maintain | Use `async_engine_from_config` in `alembic/env.py` with `connection.run_sync(do_run_migrations)` — the established async-alembic pattern |
+| **Multiple active backends simultaneously** | "Route some traffic to SQLite, some to PG" | Splits the audit trail; causes consistency nightmares; not justified by any current requirement | One backend per deployment, selected by ENV; if multi-backend is needed later, add a routing layer on top of the protocol |
+| **Database-specific query syntax per adapter** | "Use PG-specific window functions when PG is active" | Query logic in kernel uses whatever SQL is in the command; adapters can't interpret kernel intent to switch syntax | For v2.0, keep queries simple enough to run on both backends; diverge only if performance requires it and document clearly |
+
+---
 
 ## Feature Dependencies
 
 ```
-[Schema validation]
-    └──requires──> [Data type support]
-                       └──requires──> [JSON parsing]
+[PostgreSQL adapter]
+    └──requires──> [DataRepository Protocol unchanged OR extended with query()]
+    └──requires──> [Alembic migration for PG dialect]
+    └──depends-on──> [Existing DataRecord / AuditLog ORM models]
 
-[Idempotent processing]
-    └──requires──> [Audit trail]
-                       └──requires──> [Unique event identification]
+[QueryData command]
+    └──requires──> [DataRepository.query() read port declared in Protocol]
+                       └──requires──> [PostgreSQL adapter implements query()]
+                       └──requires──> [SQLite adapter implements query()]
 
-[Schema drift detection]
-    └──requires──> [Schema validation]
-    └──requires──> [Schema storage/comparison]
+[Query HTTP endpoint]
+    └──requires──> [QueryData command]
+    └──requires──> [FastAPI route wired to QueryDataHandler]
 
-[Automatic retry]
-    └──requires──> [Error handling]
-                       └──requires──> [DLQ pattern]
+[ENV backend configuration]
+    └──requires──> [Factory function / composition root that reads DATABASE_URL scheme]
+    └──enhances──> [PostgreSQL adapter] (selects it when scheme == postgresql)
+    └──enhances──> [SQLite adapter] (keeps it when scheme == sqlite)
 
-[Data quality metrics]
-    └──requires──> [Schema validation]
-    └──requires──> [Error handling]
-
-[Event emission] ──enhances──> [Idempotent processing]
-[Column-level lineage] ──enhances──> [Audit trail]
-
-[Real-time streaming] ──conflicts──> [Webhook batch processing]
-[Synchronous validation] ──conflicts──> [Fast acknowledgment]
-[Complex transformation] ──conflicts──> [Generic AddData]
+[PostgreSQL connection pool]
+    └──requires──> [PostgreSQL adapter]
+    └──enhances──> [Performance under concurrent webhook ingestion]
 ```
 
 ### Dependency Notes
 
-- **Schema validation requires Data type support:** Must parse and validate JSON types before persistence
-- **Idempotent processing requires Audit trail:** Need to track processed event IDs to detect duplicates
-- **Schema drift detection requires Schema validation:** Can't detect drift without comparing expected vs actual schemas
-- **Automatic retry requires Error handling:** Retry logic is an extension of error handling with backoff strategy
-- **Event emission enhances Idempotent processing:** Events can be emitted idempotently using same event ID
-- **Real-time streaming conflicts with Webhook batch processing:** Webhooks are inherently micro-batch; attempting stream processing adds complexity without benefit
-- **Synchronous validation conflicts with Fast acknowledgment:** Large payload validation takes time; must choose between speed and completeness
+- **PostgreSQL adapter requires existing models unchanged:** `DataRecord` and `AuditLog` are already SQLAlchemy-generic; the adapter layer only needs a new repository class and a dialect-specific `insert()` import.
+- **QueryData command requires Protocol extension first:** The `DataRepository` Protocol in `kernel/ports/repository.py` must declare `query()` before any handler can call it; both adapters must implement it before the handler ships.
+- **Query HTTP endpoint is the last step in the chain:** It depends on QueryData command, which depends on the read port, which depends on both adapters implementing it. Phase ordering must reflect this.
+- **ENV backend selection is a composition root concern:** `app.py` lifespan already creates the engine from `settings.database_url`; the factory just adds an `if "postgresql" in url` branch to pick the repository class.
 
-## MVP Definition
+---
 
-### Launch With (v1)
+## MVP Definition for v2.0
 
-Minimum viable product - what's needed to validate the concept.
+### Launch With (v2.0)
 
-- [x] **Webhook receipt endpoint** — Core ingestion mechanism; Nango sends data here
-- [x] **AddData command (generic)** — Accepts table name, source ID, schema hint, raw data
-- [x] **Schema validation (strict)** — Reject malformed data at entry point
-- [x] **PostgreSQL persistence** — Reliable storage with ACID guarantees
-- [x] **DataAdded event emission** — Decoupled notification for downstream consumers
-- [ ] **Basic error handling with logging** — Capture and log validation/persistence failures
-- [ ] **Fast webhook acknowledgment (<5s)** — Prevent provider timeouts and retry storms
-- [ ] **Health check endpoint** — Enable monitoring and load balancer health checks
+Minimum viable milestone — what's needed to promote to production.
 
-**Rationale:** These 8 features enable the core value proposition: "Data from connected integrations flows reliably into the platform with strict validation." Everything else is optimization or enhancement.
+- [ ] **PostgreSQL adapter class** — `PostgresDataRepository` implementing the existing Protocol; uses `asyncpg` driver via SQLAlchemy
+- [ ] **Idempotent inserts on PostgreSQL** — `postgresql.insert().on_conflict_do_nothing()` to match SQLite behavior
+- [ ] **ENV-based backend factory** — `app.py` or `dependencies.py` selects `SQLiteDataRepository` or `PostgresDataRepository` based on `DATABASE_URL` scheme
+- [ ] **`DataRepository.query()` read port** — Added to Protocol; takes `sql: str` and `params: dict`, returns `list[dict[str, Any]]`
+- [ ] **`QueryData` command + handler** — Pure kernel; handler calls `repository.query()`; no ORM imports
+- [ ] **Both adapters implement `query()`** — SQLite and PostgreSQL repositories both implement the new port method
+- [ ] **Query HTTP endpoint** — `POST /query` with Pydantic-validated request body; returns query results as JSON
 
-### Add After Validation (v1.x)
+### Add After Validation (v2.x)
 
-Features to add once core is working.
+- [ ] **Automated Alembic migration on startup** — Currently manual `alembic upgrade head`; known tech debt from v1.0; can now target PostgreSQL in CI
+- [ ] **Query result pagination** — Add `limit`/`offset` to `query()` port signature when result sets grow large
+- [ ] **Connection pool tuning** — Start with conservative defaults; tune after observing production connection patterns
 
-- [ ] **Idempotent processing** — After we observe retry behavior from Nango in production
-- [ ] **Dead letter queue pattern** — After we understand failure modes and retry requirements
-- [ ] **Automatic retry with backoff** — After we see transient failure patterns (DB connection drops, etc.)
-- [ ] **Audit trail enhancement** — Add processing timestamps, latency tracking when we need debugging visibility
-- [ ] **Data quality metrics** — After we have baseline to measure against (validation failure rates, latency p95/p99)
-- [ ] **Verification capability** — Confirm data storage (already in requirements, but could be basic v1.1 addition)
+### Future Consideration (v3+)
 
-### Future Consideration (v2+)
+Already explicitly out of scope per PROJECT.md:
 
-Features to defer until product-market fit is established.
+- [ ] **Event consumers** — Deferred to v3.0
+- [ ] **Schema drift detection** — Deferred to v3.0
+- [ ] **Real-time streaming** — Batch/webhook model is sufficient
 
-- [ ] **Schema drift detection** — Only valuable with multiple integrations over time; wait until we have drift incidents
-- [ ] **Column-level lineage tracking** — Complex feature requiring schema metadata storage; defer until compliance requirement emerges
-- [ ] **Query interface (QueryData)** — Explicitly out of scope for v1; add only if querying-at-ingestion proves necessary
-- [ ] **Multiple source connectors** — Nango handles this; only build if we move away from Nango
-- [ ] **Data transformation engine** — Defer to downstream services; keep ingestion focused on reliable collection
-- [ ] **Real-time streaming support** — Only if sub-second latency becomes business requirement
-- [ ] **Multi-database support** — Only if PostgreSQL proves insufficient for scale or features
+---
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Webhook receipt endpoint | HIGH | LOW | P1 |
-| AddData command (generic) | HIGH | MEDIUM | P1 |
-| Schema validation | HIGH | MEDIUM | P1 |
-| PostgreSQL persistence | HIGH | LOW | P1 |
-| DataAdded event emission | MEDIUM | LOW | P1 |
-| Fast acknowledgment | HIGH | LOW | P1 |
-| Basic error handling | HIGH | MEDIUM | P1 |
-| Health check endpoint | MEDIUM | LOW | P1 |
-| Idempotent processing | HIGH | MEDIUM | P2 |
-| Dead letter queue | MEDIUM | MEDIUM | P2 |
-| Automatic retry | MEDIUM | MEDIUM | P2 |
-| Audit trail enhancement | MEDIUM | LOW | P2 |
-| Data quality metrics | MEDIUM | MEDIUM | P2 |
-| Verification capability | MEDIUM | LOW | P2 |
-| Schema drift detection | MEDIUM | HIGH | P3 |
-| Column-level lineage | LOW | HIGH | P3 |
-| Query interface | MEDIUM | HIGH | P3 |
-| Transformation engine | LOW | HIGH | P3 |
-| Real-time streaming | LOW | HIGH | P3 |
+| PostgreSQL adapter (asyncpg) | HIGH | MEDIUM | P1 |
+| Idempotent inserts on PostgreSQL | HIGH | LOW | P1 |
+| ENV-based backend selection | HIGH | LOW | P1 |
+| `DataRepository.query()` port extension | HIGH | LOW | P1 |
+| `QueryData` command + handler (kernel) | HIGH | MEDIUM | P1 |
+| SQLite adapter implements `query()` | HIGH | LOW | P1 |
+| PostgreSQL adapter implements `query()` | HIGH | LOW | P1 |
+| Query HTTP endpoint | HIGH | MEDIUM | P1 |
+| Connection pool configuration | MEDIUM | LOW | P2 |
+| Automated migration on startup | MEDIUM | MEDIUM | P2 |
+| Query pagination | LOW | LOW | P2 |
+| Schema drift detection | LOW | HIGH | P3 |
+| Event consumers | LOW | HIGH | P3 |
 
 **Priority key:**
-- P1: Must have for launch (validates core hypothesis)
-- P2: Should have, add when possible (resilience and observability)
-- P3: Nice to have, future consideration (advanced features)
+- P1: Must have for v2.0 milestone completion
+- P2: Should have, add when P1 features are stable
+- P3: Explicitly deferred to v3.0 or later
 
-## Competitor Feature Analysis
+---
 
-| Feature | ETL Platforms (Fivetran, Airbyte) | Webhook Platforms (Hookdeck, Svix) | Our Approach |
-|---------|-----------------------------------|-------------------------------------|--------------|
-| **Connector ecosystem** | 300-1000 pre-built connectors | Focus on reliability, not connectors | Nango handles connectors; we focus on reliable persistence |
-| **Transformation** | Built-in transformation engines | No transformation (delivery focus) | No transformation - ELT pattern, transform downstream |
-| **Schema management** | Automatic schema inference/drift handling | N/A (pass-through) | Strict validation with optional drift detection later |
-| **Retry/idempotency** | Automatic with configurable policies | Core feature with DLQ | Start simple, add as needed based on production behavior |
-| **Real-time streaming** | Hybrid batch/stream support | Real-time by nature (webhooks) | Async processing of webhook batches (fast ack, queue, process) |
-| **Observability** | Comprehensive dashboards | Request inspection, replay, alerts | Start with basic logging, add metrics after validation |
-| **Scalability** | Cloud-native, elastic compute | Managed queues, rate limiting | PostgreSQL + FastAPI should handle initial scale; optimize when needed |
-| **User interface** | Low-code pipeline builders | Developer-focused, API-first | Code-first, no UI initially (focus on kernel quality) |
+## Implementation Complexity Assessment
 
-## Platform Positioning
+### Low Complexity (hours, not days)
 
-**Data-hub sits between:**
-- **Integration platforms (Nango)** — Handles OAuth, connection management, data fetching
-- **Data warehouses (Snowflake, BigQuery)** — Query, analytics, BI tools
-- **Transformation platforms (dbt)** — Data modeling and business logic
+- `DataRepository.query()` read port declaration — add one method signature to the Protocol
+- ENV-based backend factory — `if "postgresql" in settings.database_url` branch in lifespan
+- Connection pool defaults in engine creation
+- SQLite adapter `query()` implementation — `session.execute(text(sql).bindparams(**params))` + `result.mappings()`
+- PostgreSQL adapter `query()` implementation — identical pattern; async session works the same
 
-**Our lane:**
-Reliable, validated ingestion of raw integration data. We don't try to be Nango (connectors), dbt (transforms), or Snowflake (warehouse). We do ONE thing well: take webhook data, validate it, store it reliably.
+### Medium Complexity (1-3 days)
 
-## Feature Complexity Assessment
+- `PostgresDataRepository` class — new file in `adapters/driven/postgres/`; mirrors SQLite repository structure; dialect-specific `insert()` import
+- `QueryData` command + handler — new kernel files; command carries `sql: str`, `params: dict`; handler maps to read port
+- Query HTTP endpoint — new FastAPI route; Pydantic request model; call query handler; format results
 
-### Low Complexity (1-3 days)
-- Webhook receipt endpoint (FastAPI route)
-- Health check endpoint
-- DataAdded event emission
-- Fast acknowledgment pattern
-- Basic audit trail fields
+### High Complexity (not applicable for v2.0)
 
-### Medium Complexity (1-2 weeks)
-- Generic AddData command
-- Schema validation engine
-- Basic error handling with structured logging
-- Idempotent processing
-- Automatic retry with backoff
-- Data quality metrics collection
+Nothing in v2.0 is architecturally novel. The hexagonal structure is established. The new features are extensions of existing patterns, not new patterns.
 
-### High Complexity (3-4 weeks)
-- Schema drift detection
-- Column-level lineage tracking
-- Dead letter queue with replay
-- Comprehensive observability dashboard
-- Multi-database abstraction layer
+---
+
+## Existing Features as Dependencies
+
+These v1.0 features are load-bearing for v2.0. They must not be broken during the milestone.
+
+| Existing Feature | How v2.0 Depends On It |
+|------------------|------------------------|
+| `DataRepository` Protocol | PostgreSQL adapter must implement the same Protocol; query port is added here |
+| SQLite adapter | Continues to work for local development; must also implement `query()` |
+| `AddData` handler | Unchanged; PostgreSQL adapter is a drop-in replacement behind the same Protocol |
+| `settings.database_url` | Already the ENV variable; factory reads the scheme from this existing field |
+| SQLAlchemy async session pattern | PostgreSQL adapter uses the same `async_sessionmaker` pattern; no new session management needed |
+| Alembic migrations | PostgreSQL needs its own migration run; SQLite batch migrations are a separate concern |
+
+---
 
 ## Sources
 
-**Data Ingestion Platform Features:**
-- [Top 11 Data Ingestion Tools for 2026 | Integrate.io](https://www.integrate.io/blog/top-data-ingestion-tools/)
-- [The Data Streaming Landscape 2026 - Kai Waehner](https://www.kai-waehner.de/blog/2025/12/05/the-data-streaming-landscape-2026/)
-- [Top 20 Data Ingestion Tools in 2026: The Ultimate Guide | DataCamp](https://www.datacamp.com/blog/data-ingestion-tools)
-- [Data Ingestion Best Practices: A Comprehensive Guide | Integrate.io](https://www.integrate.io/blog/data-ingestion-best-practices-a-comprehensive-guide-for-2025/)
-
-**ETL/ELT Architecture:**
-- [ETL Frameworks in 2026 for Future-Proof Data Pipelines | Integrate.io](https://www.integrate.io/blog/etl-frameworks-in-2025-designing-robust-future-proof-data-pipelines/)
-- [ETL vs ELT: Key Differences & Comparison for Data Integration (2026)](https://improvado.io/blog/etl-vs-elt)
-- [Data Integration Tools in 2026: Types, Functions and Benefits | IBM](https://www.ibm.com/think/insights/data-integration-tools)
-
-**Webhook Processing:**
-- [Hookdeck - Never miss an event](https://hookdeck.com)
-- [How to Apply Webhook Best Practices to Business Processes | Integrate.io](https://www.integrate.io/blog/apply-webhook-best-practices/)
-- [How to Implement Webhook Idempotency](https://hookdeck.com/webhooks/guides/implement-webhook-idempotency)
-- [Webhook Deduplication Checklist for Developers](https://latenode.com/blog/integration-api-management/webhook-setup-configuration/webhook-deduplication-checklist-for-developers)
-
-**Schema Management:**
-- [Understanding Schema Drift | Causes, Impact & Solutions](https://www.acceldata.io/blog/schema-drift)
-- [What is Schema-Drift Incident Count for ETL Data Pipelines and why it matters? | Integrate.io](https://www.integrate.io/blog/what-is-schema-drift-incident-count/)
-- [Mastering Schema Evolution: Best Practices for Data Consistency | Airbyte](https://airbyte.com/data-engineering-resources/master-schema-evolution)
-
-**Error Handling:**
-- [How to Implement Dead Letter Queue Patterns for Failed Message Handling](https://oneuptime.com/blog/post/2026-02-09-dead-letter-queue-patterns/view)
-- [ETL Error Handling and Monitoring Metrics — 25 Statistics Every Data Leader Should Know in 2026 | Integrate.io](https://www.integrate.io/blog/etl-error-handling-and-monitoring-metrics/)
-- [Apache Kafka Dead Letter Queue: A Comprehensive Guide](https://www.confluent.io/learn/kafka-dead-letter-queue/)
-
-**Observability & Lineage:**
-- [Data Lineage Best Practices for 2026: Ensure Accuracy & Compliance](https://www.ovaledge.com/blog/data-lineage-best-practices)
-- [Data Observability Tools: Top 10 Platforms to Evaluate in 2026](https://www.ovaledge.com/blog/data-observability-tools/)
-- [5 Key Pillars of Data Observability to Know in 2026 | by Modern Data 101](https://medium.com/@community_md101/5-key-pillars-of-data-observability-to-know-in-2026-814515c22a04)
-
-**Batch vs Real-Time:**
-- [Real-Time vs Batch Data Ingestion: A Guide to Making the Right Choice](https://celerdata.com/glossary/real-time-vs-batch-data-ingestion)
-- [Choosing the Right Data Ingestion Method: Batch, Streaming, and Hybrid Approaches](https://www.onehouse.ai/blog/choosing-the-right-data-ingestion-method-batch-streaming-and-hybrid-approaches)
-- [The Future of Data Engineering: Why Real-Time + Batch Belong Together](https://estuary.dev/blog/the-future-of-data-engineering)
-
-**Anti-Patterns:**
-- [Anti-patterns for data ingestion and processing - DevOps Guidance](https://docs.aws.amazon.com/wellarchitected/latest/devops-guidance/anti-patterns-for-data-ingestion-and-processing.html)
-- [3 Data Lake Anti-Patterns to Avoid - lakeFS Blog](https://lakefs.io/blog/data-lake-anti-patterns-to-avoid/)
-- [Feature Creep: Causes, Consequences, and How to Avoid It](https://www.june.so/blog/feature-creep-causes-consequences-and-how-to-avoid-it)
-
-**Competitive Analysis:**
-- [Customer Data Platforms in 2026: Architecture, Integration and the Competitive Landscape - TechBullion](https://techbullion.com/customer-data-platforms-in-2026-architecture-integration-and-the-competitive-landscape/)
-- [9 Trends Shaping The Future Of Data Management In 2026](https://www.montecarlodata.com/blog-data-management-trends)
+- [SQLAlchemy 2.0 Async Documentation](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html) — HIGH confidence
+- [SQLAlchemy 2.1 PostgreSQL Dialect](https://docs.sqlalchemy.org/en/21/dialects/postgresql.html) — HIGH confidence (ON CONFLICT DO NOTHING)
+- [Building High-Performance Async APIs with FastAPI, SQLAlchemy 2.0, and Asyncpg](https://leapcell.io/blog/building-high-performance-async-apis-with-fastapi-sqlalchemy-2-0-and-asyncpg) — MEDIUM confidence
+- [Python + PostgreSQL: SQLAlchemy vs asyncpg Performance Comparison](https://dasroot.net/posts/2026/02/python-postgresql-sqlalchemy-asyncpg-performance-comparison/) — MEDIUM confidence
+- [SQL Injection Defenses: Python SQLAlchemy Parameterized Query Best Practices 2026](https://johal.in/sql-injection-defenses-python-sqlalchemy-parameterized-query-best-practices-2026/) — MEDIUM confidence
+- [Alembic Async Migration Discussion](https://github.com/sqlalchemy/alembic/discussions/1208) — MEDIUM confidence
+- [Alembic Batch Migrations for SQLite](https://alembic.sqlalchemy.org/en/latest/batch.html) — HIGH confidence
 
 ---
-*Feature research for: Data Ingestion/Data Hub Platform*
-*Researched: 2026-03-18*
+
+*Feature research for: Data Hub Platform v2.0 — PostgreSQL adapter, configurable backends, SQL query capability*
+*Researched: 2026-03-19*

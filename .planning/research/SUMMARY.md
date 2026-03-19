@@ -1,412 +1,195 @@
 # Project Research Summary
 
-**Project:** Data Hub Platform
-**Domain:** Python data ingestion platform with hexagonal architecture
-**Researched:** 2026-03-18
+**Project:** data-hub v2.0
+**Domain:** Hexagonal Python service — PostgreSQL adapter, configurable storage backends, SQL query capability
+**Researched:** 2026-03-19
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The data-hub is a webhook-driven data ingestion platform that sits between integration services (Nango) and data warehouses, focusing on reliable, validated storage of raw integration data. Expert consensus favors hexagonal architecture with FastAPI + PostgreSQL + asyncpg for async Python data platforms in 2026, achieving 2,800+ ops/sec with proper async patterns. The recommended approach emphasizes kernel purity (pure business logic with zero infrastructure dependencies), CQRS pattern (separate commands/queries), and fast webhook acknowledgment (<5s) with async processing to prevent timeout retry storms.
+Data-hub v2.0 is a production hardening milestone on top of a fully validated v1.0 hexagonal service. The existing stack (FastAPI, SQLAlchemy 2.0 async, aiosqlite, Alembic, Pydantic, structlog) is locked and working. The v2.0 work adds exactly three capabilities: a PostgreSQL async adapter (asyncpg), ENV-based storage backend selection, and a `QueryData` kernel command with a parameterized SQL read port and corresponding HTTP endpoint. The single new dependency is `asyncpg>=0.31.0`. Nothing in this milestone changes the kernel architecture — it only extends the protocol, adds a parallel adapter, adds a factory at the composition root, and wires a new route.
 
-The primary risks center on architectural discipline and webhook reliability. First, maintaining the dependency inversion principle (kernel depends on abstractions, never concrete adapters) requires careful import boundary enforcement — failing this makes testing impossible and couples business logic to infrastructure. Second, webhook handling demands idempotent processing with signature verification on raw bytes (not re-serialized JSON), dead letter queues for failed validations, and transaction boundaries in the right layer (Unit of Work pattern, never commit in repositories). Both risks are mitigated through Phase 1 architectural decisions that are expensive to change later.
+The recommended approach is strictly additive: extend `DataRepository` Protocol with a `query()` method, create `PostgresDataRepository` in `adapters/driven/postgres/` mirroring the SQLite structure, add a factory function in `adapters/driven/factory.py` that selects the correct repository from the `DATABASE_URL` scheme, and expose `GET /query` via a new route module. Backend switching requires no new ENV variable — `DATABASE_URL` already drives `create_async_engine()` in `app.py`. The configurable backend is purely a composition-root concern: `dependencies.py` must replace its hardcoded `SQLiteDataRepository` instantiation with a call to the factory.
 
-The core insight is that this is not a transformation platform, not a warehouse, and not a query engine — it does ONE thing exceptionally well: accept data from webhooks, validate strictly against schemas, store reliably in PostgreSQL, and emit events for downstream consumers. Following the ELT pattern (Extract-Load-Transform), all transformation logic lives in dedicated downstream services, preventing the scope creep that kills 70% of data platform projects.
+The primary risks are operational rather than architectural. Three issues can cause silent production failures: Alembic's hardcoded `alembic.ini` URL must be overridden by `DATABASE_URL` in `migrations/env.py` or migrations will silently target SQLite in production; the hardcoded `SQLiteDataRepository` in `dependencies.py` must be replaced by the factory or the PostgreSQL adapter is never invoked regardless of `DATABASE_URL`; and the query endpoint must enforce an unconditional `LIMIT` or a single request can exhaust worker memory. SQL injection via identifier interpolation in `text()` queries is also a hard requirement to address, not a deferred security concern.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-FastAPI (0.135.1) + PostgreSQL 16+ + SQLAlchemy 2.0.48+ async + asyncpg (0.30.0+) is the proven stack for high-throughput async data platforms in Python. This combination delivers 200-300% faster development than sync alternatives and 5x better performance than psycopg2, with asyncpg achieving 2,800 ops/sec in 2026 benchmarks. Pydantic 2.12.5+ provides Rust-based validation (10x faster than alternatives), while uv replaces pip/poetry/pyenv with 10-100x speedup for dependency management. For testing, pytest + pytest-asyncio with httpx AsyncClient enables proper async test coverage without blocking.
+The existing stack requires only one addition: `asyncpg>=0.31.0`. SQLAlchemy 2.0.48 already ships the `postgresql+asyncpg` dialect built-in — no SQLAlchemy upgrade needed. `create_async_engine`, `async_sessionmaker`, and `AsyncSession` behave identically for PostgreSQL as they do for SQLite; only the URL scheme changes. The `pydantic-settings` config already has `database_url`, and `migrations/env.py` already uses `async_engine_from_config` — the correct async Alembic pattern. All supporting infrastructure is in place.
 
 **Core technologies:**
-- **Python 3.12+**: Performance improvements, longer support window, required for modern async libraries
-- **FastAPI 0.135.1**: Native async, automatic OpenAPI, 200-300% faster development, perfect for webhook handlers
-- **PostgreSQL 16+**: Project requirement, with version 16+ recommended for better async driver support
-- **asyncpg 0.30.0+**: Fastest async PostgreSQL driver (5x faster than psycopg3), 2,800 ops/sec, built-in connection pooling
-- **SQLAlchemy 2.0.48+**: Industry standard ORM with production-ready async support, essential for hexagonal architecture abstraction
-- **Pydantic 2.12.5+**: Rust-based validation (10x faster), native FastAPI integration, 360M+ monthly downloads
-- **uv**: Single tool replacing pip/poetry/pyenv, 10-100x faster, 75M monthly downloads (surpassed Poetry in 2026)
-- **Alembic 1.18.4+**: Database migrations with SQLAlchemy integration, supports async migrations
+- `asyncpg>=0.31.0`: PostgreSQL async driver — SQLAlchemy's primary asyncio dialect for PostgreSQL; ships binary wheels for Python 3.12/3.13; faster than psycopg3 in async-only workloads; 0.31.0 is the latest stable release (November 2025)
+- `sqlalchemy[asyncio]` 2.0.48 (existing): already supports `postgresql+asyncpg` dialect natively; `create_async_engine` and `text()` with named params work identically for both dialects
+- `alembic` 1.18.4 (existing): `env.py` async pattern already correct; only needs `DATABASE_URL` ENV override in `migrations/env.py`
+- `pydantic-settings` (existing): `database_url` field already present; backend selection requires no new settings field
 
 **What NOT to use:**
-- psycopg2 (sync) — blocks event loop, kills FastAPI async performance
-- unittest — more boilerplate than pytest, worse async support
-- requests — synchronous HTTP client blocks event loop
-- marshmallow — 10x slower than Pydantic
-- Black/isort/Flake8 standalone — replaced by Ruff (30x faster, single tool)
+- `exec_driver_sql()` for parameterized queries — bypasses SQLAlchemy dialect layer; asyncpg rejects `:name` syntax at driver level, raising `PostgresSyntaxError`; use `session.execute(text("... :param ..."), {"param": value})` instead
+- `psycopg2` — synchronous; incompatible with SQLAlchemy asyncio extension
+- String formatting inside `text()` queries — SQL injection vulnerability; always use named bind parameters
 
 ### Expected Features
 
-The feature landscape distinguishes between table stakes (users expect these), differentiators (competitive advantage), and anti-features (commonly requested but problematic). The core value proposition is "data from connected integrations flows reliably into the platform with strict validation" — everything else is optimization or enhancement.
+All v2.0 features are P1 — the milestone is not complete without them. Pagination, automated migration on startup, and pool tuning are explicitly P2. Nothing in this milestone is architecturally novel; all features are extensions of existing patterns.
 
-**Must have (table stakes):**
-- **Reliable data persistence** — Core function; PostgreSQL handles this with focus on connection pooling
-- **Schema validation** — Industry standard in 2026; reject malformed data at entry, not discovered downstream
-- **Webhook receipt acknowledgment** — Fast 2xx response within timeout window (<30s) to prevent retries
-- **Basic error handling** — Failed operations logged and surfaced, not silently dropped
-- **Audit trail** — When data arrived, from which source, processing status (timestamp, source_id, status fields)
-- **Health check endpoint** — Monitoring systems expect /health or /ready endpoints
-- **Generic AddData command** — Single command handles any table/schema without per-integration custom code
-- **Event emission on success** — DataAdded event enables other services to react to new data
+**Must have (table stakes for v2.0):**
+- `DataRepository.query()` port extension — Protocol must declare the method before any adapter or handler can use it; unblocks all other work
+- PostgreSQL adapter (`PostgresDataRepository`) — production deployments require a server-grade DB; must use `sqlalchemy.dialects.postgresql.insert` for idempotent inserts
+- Idempotent inserts on PostgreSQL (`ON CONFLICT DO NOTHING`) — duplicate webhooks are a production reality; SQLite adapter already has this; PostgreSQL adapter must match
+- ENV-based backend factory — twelve-factor standard; factory reads `DATABASE_URL` scheme and returns the correct repository class
+- `QueryData` command + handler (pure kernel, zero SQLAlchemy imports) — SQL and params travel as plain Python types through the kernel boundary
+- Both adapters implement `query()` — SQLite adapter must also implement it for local development and unit test parity
+- `GET /query` HTTP endpoint with Pydantic-validated request — stored data that cannot be read back is useless; must enforce result cap unconditionally
 
-**Should have (competitive advantage):**
-- **Idempotent processing** — Handles duplicate webhooks gracefully using event IDs or content hashes
-- **Schema drift detection** — Alerts when incoming data shape changes unexpectedly (HIGH complexity, defer to v1.x)
-- **Automatic retry with exponential backoff** — Internal retry logic for transient failures before DLQ
-- **Data quality metrics** — Track validation failure rates, schema drift incidents, processing latency
-- **Column-level lineage tracking** — Track which source field maps to which destination column (HIGH complexity, v2+)
+**Should have (after P1 stable):**
+- Connection pool parameters as ENV vars (`pool_size`, `max_overflow`, `pool_recycle`, `pool_pre_ping`) — safe defaults exist; tune per deployment
+- Automated Alembic migration on startup — known v1.0 tech debt; can now target PostgreSQL in CI
+- Query result pagination (`limit`/`offset`) — add when result sets grow large in production
 
-**Defer (v2+):**
-- **Real-time streaming** — Webhook + async processing provides <5s latency which is sufficient; streaming adds massive complexity
-- **Complex transformation during ingestion** — Store raw data, transform downstream (ELT pattern); keeps ingestion focused
-- **General HTTP API for queries** — Scope creep; defer to dedicated query service or direct database access
-- **Multiple storage backends** — PostgreSQL for v1; migrate if/when proven necessary (YAGNI principle)
-- **Built-in data warehouse** — Platform sprawl; focus on excellent ingestion, integrate with dedicated warehouse
-- **Low-code/no-code UI** — 80% of dev time for 20% of use cases; code-based configuration versioned in Git
-
-**Critical anti-patterns to avoid:**
-- Synchronous validation of entire payload (causes timeouts)
-- Custom transformation per integration (unmaintainable as integrations grow)
-- General HTTP API for queries (scope creep into warehouse territory)
+**Defer (v3+):**
+- Event consumers — explicitly out of scope per PROJECT.md
+- Schema drift detection — deferred to v3.0
+- Real-time streaming — batch/webhook model is sufficient
 
 ### Architecture Approach
 
-Hexagonal architecture (ports & adapters) with CQRS pattern is the industry standard for Python data platforms requiring testability and clean separation. The kernel contains pure business logic with zero external dependencies, while adapters translate between external world and kernel through abstract port interfaces. Dependencies flow inward: driving adapters (FastAPI, CLI) depend on kernel commands/queries, kernel depends on port abstractions, driven adapters (PostgreSQL, event bus) implement ports. This enables comprehensive unit testing without infrastructure (kernel tests use fake ports, no database) and flexibility to swap implementations.
+The hexagonal boundary is already established and must not be violated. All v2.0 changes are extensions or additions at the adapter and composition-root layers. The kernel stays clean: `src/kernel/` must have zero imports from `sqlalchemy`, `asyncpg`, or any external dependency. `QueryDataCommand` carries `sql: str` and `params: dict` as plain Python — the kernel never knows which database is running. The factory at `adapters/driven/factory.py` is the sole location that imports both concrete adapters; it is called per request (cheap — no I/O, just class instantiation with the already-created `session_factory` from `app.state`).
 
 **Major components:**
-1. **Kernel (Core)** — Pure business logic with zero dependencies; commands (AddDataCommand), queries (VerifyDataQuery), events (DataAddedEvent), domain models, validators. Testable in isolation with no mocks.
-2. **Driving Adapters** — Primary/input adapters receive external input (FastAPI webhook handler, CLI commands). Convert HTTP/CLI to kernel commands/queries. Thin translation layers only.
-3. **Driven Adapters** — Secondary/output adapters implement external communication (PostgreSQL repository, event publisher). Implement port interfaces defined in kernel. Map domain models to ORM models here.
-4. **Ports (Interfaces)** — Abstract interfaces using Python Protocols. Driven ports (DataRepository, EventPublisher) defined in kernel, implemented by adapters. Enforce dependency inversion.
-5. **Unit of Work** — Transaction boundary management at service layer, not in repositories. Repositories never commit — UoW commits once after all operations succeed.
+1. `kernel/ports/repository.py` (EXTEND) — add `query(sql, params) -> list[dict]` to the `DataRepository` Protocol; this is the critical-path blocker for all other work
+2. `kernel/commands/query_data.py` + `kernel/handlers/query_data_handler.py` (NEW) — pure Python command/handler; handler calls `repository.query()`; no ORM types cross the kernel boundary
+3. `adapters/driven/postgres/repository.py` (NEW) — `PostgresDataRepository` implementing full protocol; uses `sqlalchemy.dialects.postgresql.insert` for upserts; uses `session.execute(text(sql), params)` for queries
+4. `adapters/driven/factory.py` (NEW) — `create_repository(database_url, session_factory)` selects adapter by URL scheme; lazy imports inside function body prevent circular deps
+5. `adapters/driving/fastapi/dependencies.py` (MODIFY) — replace hardcoded `SQLiteDataRepository` with factory call; add `get_query_handler` dependency
+6. `adapters/driving/fastapi/routes/query.py` (NEW) — `GET /query` endpoint; Pydantic-validated request; structured filter params only (never raw SQL from HTTP callers); unconditional LIMIT enforcement
+7. `tests/unit/fakes.py` (MODIFY) — add `query()` to `FakeDataRepository` so `QueryDataHandler` can be unit-tested without a real database
 
-**Key patterns:**
-- CQRS: Commands change state and return events; queries retrieve data with no side effects
-- Domain events: After successful operations, emit events for loose coupling (Command → Event → Command)
-- Dependency injection: Kernel defines ports, adapters implement, wiring happens at application entry point
-- Build order: Kernel first (no dependencies) → Driven adapters second → Driving adapters last
-
-**Data flow example (webhook ingestion):**
-External webhook → FastAPI route (validate HTTP) → AddDataCommand → Kernel handler (validate business rules) → Repository port → PostgreSQL adapter (map to ORM, execute SQL) → Kernel handler (create DataAddedEvent) → Event publisher port → Response (200 OK with record ID)
+**No changes needed:** `app.py`, `config/settings.py`, `migrations/env.py` (except ENV override for DATABASE_URL), ORM models in `sqlite/models.py` (dialect-agnostic)
 
 ### Critical Pitfalls
 
-Research identified 10 critical pitfalls, with the top 5 representing project-killing risks that must be addressed in Phase 1:
+1. **Alembic `alembic.ini` hardcodes SQLite URL** — update `migrations/env.py` to read `os.environ.get("DATABASE_URL")` before Alembic uses the config URL; without this, `alembic upgrade head` silently migrates the local SQLite file in any PostgreSQL environment, exits 0, and the first production request fails with a missing-table error
 
-1. **Webhook signature verification on parsed JSON** — Verification fails intermittently because Python's `json.dumps()` doesn't reproduce byte-identical output. Always verify HMAC on raw request bytes (`await request.body()` in FastAPI) before parsing. Fixing later requires handling legacy data.
+2. **`dependencies.py` hardcodes `SQLiteDataRepository`** — after adding the factory, replace the direct instantiation; without this the PostgreSQL adapter exists but is never invoked regardless of `DATABASE_URL`; the service starts, responds to requests, and appears healthy while always using SQLite
 
-2. **Missing idempotency keys leading to duplicates** — Webhook providers retry on timeouts/failures. Without idempotency, duplicate records corrupt data. Extract event_id from payload, store with unique constraint, check before processing. Return 200 immediately if already processed. Core requirement, not later optimization.
+3. **SQL injection via identifier interpolation in `text()` queries** — values are safe with named bind parameters; SQL identifiers (column names, table names, ORDER BY fields) cannot be parameterized and must be validated against an explicit allowlist; injection test cases are acceptance criteria, not a deferred item; never accept raw SQL strings from HTTP callers
 
-3. **Transaction boundaries in wrong layer** — Repositories that commit after each operation make atomic transactions impossible. When multi-operation workflows fail partway, some commits succeed causing inconsistent state. Implement Unit of Work pattern: repositories never commit, UoW commits once after all operations. Architectural decision expensive to change later.
+4. **Dialect-specific `ON CONFLICT` — wrong import in PostgreSQL adapter** — the PostgreSQL adapter must use `from sqlalchemy.dialects.postgresql import insert as pg_insert`; copying the SQLite adapter's `sqlite_insert` raises `CompileError` at execution time (not import time); verify with an idempotency integration test against a real PostgreSQL connection (not SQLite or in-memory)
 
-4. **Leaking infrastructure into kernel** — Domain models importing SQLAlchemy/FastAPI/Pydantic couples business logic to infrastructure, making kernel untestable without databases. Use Python Protocols for ports, keep kernel pure with zero external dependencies, enforce with import-linter. Foundational decision that defines codebase structure.
+5. **Unbound query result size — DoS via expensive query** — enforce an unconditional `LIMIT` in the query adapter regardless of client input; make the default and maximum ENV-configurable (`DEFAULT_QUERY_LIMIT=100`, `MAX_QUERY_LIMIT=1000`); a single unbounded query on a populated `data_records` table can exhaust worker memory or starve the connection pool
 
-5. **Pydantic validators in hot path** — `@field_validator` decorators run in Python, creating 10-100x slowdown vs `Annotated` constraints (compiled Rust). At 10,000+ records per webhook, validation time increases from milliseconds to seconds causing timeouts. Use `Annotated[str, StringConstraints(...)]` for hot paths, reserve decorators for truly complex logic only.
-
-**Additional critical pitfalls:**
-6. Schema evolution without migration strategy (Phase 2)
-7. Long-running transactions during external calls (Phase 2)
-8. Database abstraction that hides PostgreSQL strengths (Phase 1)
-9. Testing external adapters with real external systems (Phase 1)
-10. No dead letter queue for validation failures (Phase 1)
-
-**Common warning signs:**
-- Signature validation fails intermittently → verify on raw bytes
-- Duplicate records appearing → add idempotency
-- Cannot test kernel without database → enforce kernel purity
-- Validation time grows linearly with records → use Annotated constraints
-- Events published for operations that later failed → fix transaction boundaries
+---
 
 ## Implications for Roadmap
 
-Based on research, the project should follow hexagonal architecture's dependency rule for build order: kernel first (no dependencies) → driven adapters (implement kernel ports) → driving adapters (use kernel commands). This order enables testing at every step and prevents coupling mistakes.
+The dependency chain drives a clear build order. The Protocol extension is the critical-path blocker — nothing else can be implemented until `query()` is declared on `DataRepository`. After that, the PostgreSQL adapter and the kernel command can proceed in parallel before converging at the factory, dependency wiring, and route layers. Migration CI hardening is a deployment prerequisite that can proceed in parallel with query work once the adapter exists.
 
-### Phase 1: Core Kernel & Domain Logic
-**Rationale:** Hexagonal architecture's dependency rule requires kernel first — it has zero dependencies and is the foundation for everything else. All business logic, validation rules, and domain models live here. Building kernel first enables comprehensive unit testing without any infrastructure setup.
+### Phase 1: Protocol Extension and Foundation
 
-**Delivers:** Pure business logic, testable in isolation
-- Domain models (DataRecord, validation rules)
-- Port interfaces (DataRepository, EventPublisher as Protocols)
-- Commands (AddDataCommand and handler)
-- Queries (VerifyDataQuery and handler)
-- Events (DataAddedEvent)
-- Schema validators (using Pydantic with Annotated constraints for performance)
+**Rationale:** The `DataRepository` Protocol is the seam everything depends on. Extending it with `query()` and adding `asyncpg` to `pyproject.toml` are the only prerequisites for all downstream work. Also includes updating `FakeDataRepository` to keep unit tests compilable immediately.
 
-**Addresses features:**
-- Schema validation (domain validators)
-- Generic AddData command (flexible, no per-integration code)
-- Event emission on success (DataAddedEvent)
+**Delivers:** Extended `DataRepository` Protocol with `query()` method; updated `FakeDataRepository` in `tests/unit/fakes.py`; `asyncpg>=0.31.0` added to `pyproject.toml` and installed
 
-**Avoids pitfalls:**
-- **Kernel impurity** — enforce zero infrastructure imports, use Python Protocols for ports
-- **Pydantic validator performance** — use Annotated constraints not @field_validator decorators
+**Addresses:** `DataRepository.query()` read port (P1 table stakes)
 
-**Testing:** Unit tests only, no mocks needed (inject fake implementations of ports). Can achieve 100% kernel coverage with <1 second test suite.
+**Avoids:** Blocked parallel development in subsequent phases; kernel purity violations from carrying SQL types before the port boundary is defined
 
-### Phase 2: Database Persistence Layer
-**Rationale:** Once kernel is stable, implement driven adapters that enable I/O. PostgreSQL repository implements DataRepository port, mapping domain models to ORM models. This phase establishes transaction patterns and connection management that all future features depend on.
+### Phase 2: PostgreSQL Adapter and Backend Factory
 
-**Delivers:** Reliable data persistence
-- SQLAlchemy async models (ORM layer)
-- PostgreSQL repository implementation (implements DataRepository port)
-- Database session management (async connection pooling)
-- Alembic migrations setup
-- Unit of Work pattern (transaction boundaries at service layer)
+**Rationale:** The PostgreSQL adapter and backend factory are the core value of v2.0. Once the Protocol is extended, this phase can proceed in parallel with kernel command work. The factory is the last step because it depends on both adapters being complete.
 
-**Uses stack:**
-- PostgreSQL 16+ with asyncpg driver (5x faster than psycopg2)
-- SQLAlchemy 2.0.48+ async (production-ready async ORM)
-- Alembic 1.18.4+ (database migrations)
+**Delivers:** `PostgresDataRepository` implementing full protocol (add, get, query) with idempotent inserts; `SQLiteDataRepository` extended with `query()`; `adapters/driven/factory.py` factory function; `dependencies.py` updated to use factory; connection pool parameters (`pool_pre_ping`, `pool_recycle`, `pool_size`, `max_overflow`) as ENV-configurable settings; `/health` endpoint reports active backend (`storage_backend` field)
 
-**Implements architecture:**
-- Driven adapter for persistence (PostgreSQL repository)
-- Port implementation (DataRepository Protocol)
-- Domain to ORM mapping (happens in adapter, not kernel)
+**Uses:** `asyncpg>=0.31.0`, `sqlalchemy.dialects.postgresql.insert`, `session.execute(text(...), params)` pattern
 
-**Avoids pitfalls:**
-- **Transaction boundaries wrong layer** — repositories never commit, UoW pattern manages transactions
-- **Database abstraction too generic** — design ports for business operations, not CRUD
+**Implements:** `PostgresDataRepository`, `BackendFactory` components
 
-**Testing:** Integration tests with real PostgreSQL (use Docker container), verify adapter contract. Tests should complete in <10 seconds total.
+**Avoids:** Hardcoded repository bypass (Pitfall 5 from PITFALLS.md); dialect-specific ON CONFLICT error (Pitfall 1); connection pool misconfiguration (Pitfall 4); singleton repository created at module import time (Architecture Anti-Pattern 3)
 
-### Phase 3: Webhook Reception & Transport
-**Rationale:** With kernel and persistence complete, add driving adapter (FastAPI) to expose system. Webhook handling is most complex adapter due to signature verification, idempotency, and timeout requirements — build after core is solid.
+### Phase 3: QueryData Kernel Command and Query Endpoint
 
-**Delivers:** External webhook endpoint
-- FastAPI application setup
-- Webhook POST endpoint (/webhook/nango)
-- Request validation (Pydantic DTOs for API layer)
-- Signature verification (HMAC on raw bytes)
-- Idempotency handling (check event_id before processing)
-- Fast acknowledgment pattern (<5s response)
-- Health check endpoint (/health)
-- Dependency injection wiring (connect adapters to kernel)
+**Rationale:** The query feature depends on both adapters implementing `query()` (Phase 2) and the Protocol declaring it (Phase 1). Kernel command and HTTP route are built together so injection prevention and result cap enforcement are never separated from the feature.
 
-**Uses stack:**
-- FastAPI 0.135.1 (native async, automatic OpenAPI)
-- Uvicorn 0.35+ (ASGI server)
-- Gunicorn 23.0+ for production (multi-worker process manager)
+**Delivers:** `QueryDataCommand` + `QueryDataHandler` (pure kernel, zero external imports); `GET /query` FastAPI route with Pydantic-validated structured parameters; unconditional LIMIT enforcement (`DEFAULT_QUERY_LIMIT`, `MAX_QUERY_LIMIT` ENV-configurable); allowlist validation for filter identifiers; structured error responses (400 for invalid input, not 500)
 
-**Implements architecture:**
-- Driving adapter for HTTP (FastAPI routes)
-- Converts HTTP requests to kernel commands
-- Thin translation layer (no business logic in routes)
+**Uses:** `text()` with named bind parameters; `result.mappings()` for plain dict results; `[dict(row) for row in result]` pattern
 
-**Avoids pitfalls:**
-- **Webhook signature verification on parsed JSON** — verify HMAC on raw bytes before parsing
-- **Missing idempotency** — extract event_id, store with unique constraint, check before processing
-- **No dead letter queue** — capture all rejected payloads with validation errors
+**Implements:** `QueryDataHandler`, `routes/query.py` components
 
-**Testing:** E2E tests with httpx AsyncClient, verify complete webhook flow including signature validation and idempotency.
+**Avoids:** SQL injection via identifier interpolation (Pitfall 3); unbound query result size DoS (Pitfall 7); ORM leakage into kernel (Architecture Anti-Pattern 2); free-form SQL strings accepted from HTTP callers (Anti-Feature in FEATURES.md)
 
-### Phase 4: Event Publishing & Observability
-**Rationale:** With core ingestion working, add driven adapter for event publishing and observability. Events enable downstream consumers to react to new data. Structured logging and metrics enable production debugging.
+### Phase 4: Migration Compatibility and CI Hardening
 
-**Delivers:** Event emission and monitoring
-- Event publisher implementation (in-memory initially)
-- Structured logging (structlog with JSON output)
-- Basic error handling with DLQ table
-- Audit trail enhancement (processing timestamps, latency tracking)
+**Rationale:** Alembic migration correctness against PostgreSQL is a deployment prerequisite. The `alembic.ini` hardcoded URL is a silent production failure mode — the command exits 0 while migrating the wrong database. This phase closes that gap and validates the entire migration history against both dialects.
 
-**Uses stack:**
-- structlog 24.0+ (structured logging for observability)
-- In-memory event publisher initially (swap to Redis/RabbitMQ when scaling)
+**Delivers:** `migrations/env.py` updated to read `DATABASE_URL` from environment first; CI job running `alembic upgrade head` + `alembic downgrade base` against `postgres:16-alpine` Docker service; confirmation all three existing migrations are PostgreSQL-compatible; `alembic.ini` confirmed to contain no production credentials
 
-**Implements architecture:**
-- Driven adapter for events (implements EventPublisher port)
-- DLQ table for validation failures
-
-**Avoids pitfalls:**
-- **No dead letter queue** — implemented in this phase
-- **Testing external systems** — event publisher uses in-memory implementation for tests
-
-**Testing:** Integration tests verify events published after successful commands, DLQ captures validation failures.
-
-### Phase 5: Production Hardening
-**Rationale:** After MVP validation, add resilience features discovered through production use. Schema drift detection, retry logic, and data quality metrics prevent operational issues at scale.
-
-**Delivers:** Production resilience
-- Automatic retry with exponential backoff
-- Schema drift detection (compare incoming vs stored schemas)
-- Data quality metrics (validation failure rates, latency p95/p99)
-- Rate limiting (for burst protection)
-- Connection pooling tuning
-
-**Addresses features:**
-- Idempotent processing (retry safety)
-- Data quality metrics (operational visibility)
-- Schema drift detection (proactive issue detection)
-
-**Avoids pitfalls:**
-- **Schema evolution without migration** — schema versioning, open models for ingestion
-- **Long-running transactions** — ensure no external calls within transaction boundaries
-- **Performance traps** — connection pooling, rate limiting, N+1 query prevention
-
-**Testing:** Load testing with 10,000+ concurrent requests, verify no timeouts or deadlocks.
+**Avoids:** Alembic URL bypass (Pitfall 2); `batch_alter_table` migration incompatibility with future migrations (Pitfall 6); credentials committed to repository (Security section in PITFALLS.md)
 
 ### Phase Ordering Rationale
 
-- **Kernel → Driven → Driving** follows hexagonal architecture's dependency rule: kernel has zero dependencies (build first), driven adapters depend on kernel ports (build second), driving adapters depend on kernel commands (build last). This order enables testing at every step without mocks.
-
-- **Persistence before transport** ensures data storage is solid before accepting external input. Webhook handlers depend on working database — building in reverse order requires stubbing database during webhook development.
-
-- **Event publishing after core ingestion** prevents scope creep. Events are valuable but not required for MVP validation. Building them later ensures core value proposition works first.
-
-- **Production hardening last** addresses issues discovered in production. Schema drift detection, retry logic, and metrics are optimizations based on actual usage patterns, not hypothetical concerns.
-
-**Parallel opportunities:**
-- Phase 2 and Phase 3 can be built in parallel once kernel (Phase 1) is stable
-- Multiple driven adapters (PostgreSQL, events) can be developed concurrently
-- Tests can be written alongside each phase implementation
+- Phase 1 must be serial and first because the Protocol is the dependency contract for all other phases; no adapter can implement `query()` until it is declared and no handler can call it
+- Phases 2 and 3 can partially overlap — `PostgresDataRepository` and `QueryDataCommand` can be developed in parallel after Phase 1; the factory (end of Phase 2) must complete before the route (Phase 3) can be fully wired end-to-end
+- Phase 4 runs in parallel with Phase 3 if team capacity allows, or sequentially after — it validates the complete adapter against a real PostgreSQL container and is a gate before any production deployment
+- The ARCHITECTURE.md build order (Steps 1–9) maps directly to this phase structure and confirms the dependency chain
 
 ### Research Flags
 
-Phases with standard patterns (skip research-phase):
+All phases have well-documented patterns — no phase requires `/gsd:research-phase` during planning:
 
-- **Phase 1 (Kernel)**: Well-documented hexagonal architecture patterns in Python, official Pydantic docs for validation, established CQRS examples
-- **Phase 2 (Database)**: SQLAlchemy 2.0 async is production-ready with extensive documentation, asyncpg patterns are standardized
-- **Phase 3 (Webhook)**: FastAPI webhook handling is well-documented, signature verification patterns are established
-- **Phase 4 (Events)**: In-memory event publisher is straightforward, structlog setup is standard
-- **Phase 5 (Hardening)**: Production patterns are well-documented in research (rate limiting, schema drift, retry logic)
+- **Phase 1 (Protocol Extension):** Standard Python Protocol extension; zero ambiguity; pattern established in v1.0 codebase
+- **Phase 2 (PostgreSQL Adapter + Factory):** SQLAlchemy 2.0 async PostgreSQL dialect is extensively documented; all patterns verified against official docs and direct codebase inspection; dialect-specific insert pattern is explicit in STACK.md
+- **Phase 3 (QueryData Command + Endpoint):** Hexagonal command/handler pattern already demonstrated by `AddData`; `text()` parameterization pattern verified against SQLAlchemy issue #6452; PITFALLS.md has injection-specific guidance
+- **Phase 4 (Migration CI):** Alembic async pattern and ENV override are well-documented; Docker Compose CI for PostgreSQL is standard; existing `env.py` already uses the correct async pattern
 
-Phases needing deeper research during planning:
-
-- **None**: Research coverage is comprehensive for all suggested phases. All patterns are established and well-documented.
-
-**Research adequacy note:** The initial research provides sufficient depth for roadmap creation. Phase-specific research during planning should focus on implementation details (e.g., specific Pydantic validation patterns for domain schemas) rather than architectural patterns (already covered).
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Official docs verified for all core technologies (FastAPI 0.135.1, SQLAlchemy 2.0.48, asyncpg 0.30.0, Pydantic 2.12.5). Version numbers confirmed from PyPI. Performance benchmarks from multiple 2026 sources showing asyncpg 2,800 ops/sec, Pydantic 10x faster than alternatives. |
-| Features | MEDIUM-HIGH | Feature landscape derived from 15+ data ingestion platform analyses, webhook best practices, and ETL/ELT architecture guides. Table stakes vs differentiators vs anti-features validated across multiple sources. MVP definition based on product constraint (Nango integration, PostgreSQL only). |
-| Architecture | HIGH | Hexagonal architecture patterns extensively documented with Python-specific implementations (6 GitHub examples, AWS Prescriptive Guidance, multiple 2026 blog posts). CQRS pattern standard for event-driven systems. Unit of Work pattern from Cosmic Python book (authoritative source). Dependency inversion well-established. |
-| Pitfalls | HIGH | Pitfalls sourced from production postmortems, architecture anti-pattern guides, webhook security best practices, and PostgreSQL schema change mistakes. All 10 critical pitfalls have multiple source corroboration. Prevention strategies validated across sources. Phase mapping based on when issues surface (design time vs runtime). |
+| Stack | HIGH | asyncpg 0.31.0 confirmed on PyPI with Python 3.12/3.13 wheels; SQLAlchemy 2.0.48 verified in lock file; all other dependencies already installed and validated in v1.0; `exec_driver_sql` vs `execute(text())` difference verified against SQLAlchemy issue #6452 |
+| Features | HIGH | Feature set derived directly from PROJECT.md milestone scope; dependency graph verified against existing codebase file structure; all P1 features are extensions of established patterns, not new patterns |
+| Architecture | HIGH | Existing codebase inspected directly (`repository.py`, `dependencies.py`, `app.py`, `settings.py`, `migrations/env.py`); all component boundaries verified against running v1.0 code; build order confirmed by tracing actual import dependencies |
+| Pitfalls | HIGH | All critical items verified against official SQLAlchemy docs, asyncpg docs, and Alembic docs with multiple authoritative sources per pitfall; warning signs and recovery strategies are concrete and actionable |
 
 **Overall confidence:** HIGH
 
-All core recommendations (stack, architecture, critical pitfalls) are backed by official documentation and multiple high-quality sources. Feature recommendations reflect 2026 industry consensus on data ingestion platform capabilities. The main areas of uncertainty (schema drift detection complexity, optimal connection pool sizing, event publisher scaling) are explicitly called out as v1.x or v2+ features to be tuned based on production data.
-
 ### Gaps to Address
 
-While research confidence is high, several areas need validation during implementation:
+- **Connection pool tuning values:** The research recommends `pool_size=5`, `max_overflow=10` as a starting point with ENV-configurability. Actual optimal values depend on Uvicorn worker count and PostgreSQL `max_connections` in the deployment environment. Validate after first load test with real infrastructure; target 20 concurrent requests without `QueuePool limit reached` errors.
 
-- **Nango webhook payload format**: Research covers general webhook patterns, but actual Nango webhook schema and signature mechanism must be verified during Phase 3. Check Nango documentation for specific signature header names, payload structure, and retry behavior.
+- **PgBouncer in deployment stack:** If the production PostgreSQL deployment uses PgBouncer in transaction mode, `connect_args={"statement_cache_size": 0}` must be added to `create_async_engine()`. This is not known at research time. Add a `DB_STATEMENT_CACHE_SIZE` ENV var defaulting to the asyncpg default so it can be set to 0 without a code change if PgBouncer is confirmed in the deployment stack.
 
-- **PostgreSQL schema design for dynamic tables**: Generic AddData command accepting any table name requires careful schema design. Consider: single polymorphic table with JSONB (flexible but slow queries) vs dynamic table creation (fast queries but migration complexity) vs metadata-driven approach. Evaluate during Phase 2 based on expected table count and query patterns.
+- **`JSONB` vs `JSON` column type:** The existing `sa.JSON` column maps to PostgreSQL `JSON` (not `JSONB`). JSONB enables indexing and faster operators on the `data` column. Explicitly deferred to a future milestone; not a blocker for v2.0 but flag for the team if query performance on `data` column becomes a concern.
 
-- **Event payload structure**: DataAddedEvent payload design impacts downstream consumers. Decide during Phase 4: include full data payload (simpler for consumers but larger messages) vs just metadata (smaller messages but requires consumers to query database).
-
-- **Connection pool sizing**: Research recommends pool_size=10-20 for data ingestion workloads, but optimal values depend on webhook concurrency patterns. Plan load testing in Phase 5 to tune pool_size and max_overflow based on actual traffic.
-
-- **Schema validation strictness**: Balance between strict validation (reject unknown fields) and flexibility (allow extra fields). Research recommends "open" models for ingestion, but optimal approach depends on how frequently external sources change schemas. Start strict in Phase 1, potentially relax in Phase 5 based on production validation failure rates.
-
-**Handling strategy:**
-- Document assumptions in Phase planning (e.g., "assumes Nango uses HMAC-SHA256 signatures")
-- Plan verification spikes during Phase implementation (e.g., "3-day spike to evaluate schema design options")
-- Build telemetry early (Phase 4) to gather data for tuning decisions (Phase 5)
-- Defer optimizations to Phase 5 when production patterns are observable
+---
 
 ## Sources
 
-### Stack Research
+### Primary (HIGH confidence)
+- SQLAlchemy 2.0 Async I/O documentation — `create_async_engine`, `async_sessionmaker`, `postgresql+asyncpg` URL format, `session.execute(text(), params)` pattern
+- SQLAlchemy 2.0 PostgreSQL dialect documentation — `from sqlalchemy.dialects.postgresql import insert`, `on_conflict_do_nothing()`
+- asyncpg PyPI + GitHub releases — version 0.31.0 confirmed (November 24, 2025), Python 3.12/3.13 binary wheels verified
+- SQLAlchemy issue #6452 — `exec_driver_sql` vs `execute(text())` for asyncpg named parameters; `execute(text(...), dict)` is the correct and safe pattern
+- SQLAlchemy discussion #7192 — asyncpg parameter rewriting handled by dialect layer when using `session.execute`; named params work correctly
+- Alembic async migration documentation — `async_engine_from_config`, `connection.run_sync(do_run_migrations)` pattern
+- Alembic batch migrations documentation — `op.batch_alter_table()` for cross-dialect compatibility
+- Alembic ENV override discussion #1043 — `os.environ.get("DATABASE_URL")` pattern in `env.py`
+- asyncpg FAQ — PgBouncer transaction mode and prepared statement cache incompatibility; `statement_cache_size=0` fix
+- Direct codebase inspection — `pyproject.toml`, `uv.lock`, `settings.py`, `repository.py`, `session.py`, `migrations/env.py`, `dependencies.py`, `app.py` (all files confirmed; asyncpg not yet in lock file)
 
-**HIGH confidence (official docs, version-verified):**
-- FastAPI PyPI — Version 0.135.1 confirmed (March 2026)
-- Pydantic docs — Version 2.12.5, Rust-based validation
-- SQLAlchemy docs — Version 2.0.48 (March 2026), async capabilities
-- asyncpg documentation — Connection pooling, performance benchmarks
-- Alembic PyPI — Version 1.18.4 (February 2026), Python 3.10+ requirement
-
-**MEDIUM confidence (WebSearch + multiple sources):**
-- FastAPI best practices 2026 — Python 3.12+ recommendation
-- FastAPI production guide 2026 — Gunicorn + Uvicorn pattern
-- SQLAlchemy vs asyncpg benchmark — 2,800 ops/sec asyncpg, 1,450 ops/sec SQLAlchemy
-- Python dependency management 2026 — uv vs Poetry vs pip-tools comparison
-- uv vs Poetry comparison — 75M monthly downloads, 10-100x faster
-- Ruff formatter — 30x faster than Black, >99.9% compatible
-- Pyright vs mypy performance — 3-5x speed improvement
-
-### Features Research
-
-**Data ingestion platform features:**
-- Top 11 Data Ingestion Tools for 2026 | Integrate.io
-- The Data Streaming Landscape 2026 — Kai Waehner
-- Top 20 Data Ingestion Tools in 2026 | DataCamp
-- Data Ingestion Best Practices: Comprehensive Guide | Integrate.io
-
-**Webhook processing:**
-- Hookdeck — Webhook reliability platform
-- How to Apply Webhook Best Practices | Integrate.io
-- How to Implement Webhook Idempotency | Hookdeck
-- Webhook Deduplication Checklist for Developers
-
-**Schema management:**
-- Understanding Schema Drift | Causes, Impact & Solutions
-- Schema-Drift Incident Count for ETL Pipelines | Integrate.io
-- Mastering Schema Evolution | Airbyte
-
-**Error handling:**
-- How to Implement Dead Letter Queue Patterns | OneUptime
-- ETL Error Handling and Monitoring Metrics 2026 | Integrate.io
-- Apache Kafka Dead Letter Queue Guide | Confluent
-
-### Architecture Research
-
-**Hexagonal architecture foundations:**
-- Hexagonal Architecture Design: Python Ports and Adapters 2026
-- Hexagonal architecture in Python — Szymon Miks
-- Hexagonal Architecture Practical Guide 2026
-- AWS Prescriptive Guidance: Python hexagonal architecture
-
-**Python implementations:**
-- GitHub: hexagonal-architecture-python-spark (data engineering example)
-- GitHub: szymon6927/hexagonal-architecture-python
-- GitHub: marcosvs98/hexagonal-architecture-with-python
-
-**CQRS and event patterns:**
-- AWS: Building hexagonal architectures — CQRS recommendations
-- Architecture Patterns with Python (O'Reilly Book)
-
-**FastAPI + Hexagonal:**
-- Building Maintainable Python Applications with Hexagonal Architecture and DDD
-- Hexagonal FastAPI by Moritz Althaus (January 2025)
-
-### Pitfalls Research
-
-**Data ingestion & pipelines:**
-- Solving data ingestion for Python coders — dlthub
-- Python Data Pipeline: Frameworks & Building Processes
-- 5 Common Mistakes Killing Your Pipeline — Medium
-- Data Ingestion Failures: Root Causes, Recovery Strategies 2026
-- Common Failure Points in Data Pipelines
-
-**Webhook security & validation:**
-- How to Build Webhook Handlers in Python | OneUptime
-- Anatomy of a Good Webhook Payload | Hookdeck
-- 9 Powerful Webhook Security Patterns | PentestTesting
-- How to Implement Webhook Idempotency | Hookdeck
-- Handling Payment Webhooks Reliably (Idempotency, Retries)
-
-**PostgreSQL schema evolution:**
-- Common DB schema change mistakes — postgres.ai
-- Postgres schema changes are still a PITA — Xata
-- PostgreSQL schema-change gotchas — Medium
-- Zero downtime schema migrations PostgreSQL — Xata
-
-**Pydantic performance:**
-- Pydantic Performance: 4 Tips on Validating Large Amounts of Data
-- Performance — Pydantic Validation docs
-- Structured Output Validation: Pydantic vs JSON Schema 2026
-
-**Repository & Unit of Work:**
-- Mastering Transaction Boundaries in Python with SQLAlchemy
-- Unit of Work Pattern — Cosmic Python
-- Repository and Unit of Work Pattern in Python
-- Repository Pattern Is Lying To You — Use Ports And Adapters
+### Secondary (MEDIUM confidence)
+- Building High-Performance Async APIs with FastAPI, SQLAlchemy 2.0, and asyncpg (leapcell.io) — async performance patterns
+- Python + PostgreSQL: SQLAlchemy vs asyncpg Performance Comparison (dasroot.net, 2026) — asyncpg performance advantage confirmed in async-only workloads
+- SQL Injection Defenses: Python SQLAlchemy Parameterized Query Best Practices 2026 (johal.in) — identifier allowlist pattern
+- How to properly set pool_size and max_overflow in SQLAlchemy for ASGI apps (pythontutorials.net) — pool configuration guidance
+- Supabase pooling and asyncpg: PgBouncer incompatibility (medium.com) — `statement_cache_size=0` fix
 
 ---
-*Research completed: 2026-03-18*
+*Research completed: 2026-03-19*
 *Ready for roadmap: yes*
