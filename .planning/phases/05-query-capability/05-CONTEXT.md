@@ -20,7 +20,7 @@ Stored data is queryable via a parameterized SQL interface through both the kern
 - Fixed allowlist for filterable fields: `connection_id` and model columns only — no filtering on raw JSON data fields
 
 ### HTTP Endpoint Contract
-- Paginated envelope response: `{"data": [...], "count": 42, "limit": 100, "offset": 0, "has_more": true}`
+- Paginated envelope response: `{"data": [...], "count": 42, "limit": 100, "has_more": true}`
 - Error responses use Problem Details RFC 7807: `{"type": "...", "title": "...", "status": 400, "detail": "..."}`
 - No authentication required — internal service, same as /health and /metrics
 - Include system fields in results: id, connection_id, model, created_at alongside data payload
@@ -36,7 +36,6 @@ Stored data is queryable via a parameterized SQL interface through both the kern
 - Maximum limit: 1000 records — cap enforced unconditionally
 - No sorting for v1 — default order by id/created_at
 - Empty results return 200 with `{"data": [], "count": 0, ...}` — not an error
-- Offset-based pagination: `?offset=100` skips first 100 records
 
 ### Claude's Discretion
 - Exact Problem Details type URIs
@@ -111,6 +110,7 @@ Stored data is queryable via a parameterized SQL interface through both the kern
 <deferred>
 ## Deferred Ideas
 
+- Offset-based pagination — DataRepository.query() Protocol has no offset param; requires port + adapter changes, future phase
 - Cursor-based pagination — more stable for large datasets, future phase
 - Multi-field sorting — adds complexity, not needed for v1
 - Filtering on JSON data fields — needs JSON path validation, future phase
