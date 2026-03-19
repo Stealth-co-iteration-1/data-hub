@@ -3,7 +3,8 @@
 Per CONTEXT.md decisions:
 - Single /health endpoint
 - Internally tests DB connectivity - but does NOT expose connection details
-- Response format: {"status": "ok", "version": "1.0.0"} (200) or {"status": "error"} (503)
+- Response format: {"status": "ok", "version": "1.0.0", "backend": "postgresql"} (200)
+  or {"status": "error"} (503)
 """
 
 from fastapi import APIRouter, Request
@@ -25,6 +26,11 @@ async def health_check(request: Request) -> JSONResponse:
         200 OK: Service and database are healthy
         503 Service Unavailable: Database connection failed
 
+    Response includes:
+        - status: "ok" or "error"
+        - version: Application version
+        - backend: "sqlite" or "postgresql" (only on success)
+
     Response body never includes sensitive information (connection strings, etc.).
     """
     try:
@@ -37,6 +43,7 @@ async def health_check(request: Request) -> JSONResponse:
             content={
                 "status": "ok",
                 "version": settings.version,
+                "backend": request.app.state.backend,
             },
         )
 
