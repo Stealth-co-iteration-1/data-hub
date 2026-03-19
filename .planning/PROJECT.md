@@ -26,13 +26,16 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Active
 
-(None — v1.0 milestone complete)
+- [ ] PostgreSQL adapter with asyncpg driver
+- [ ] Configurable storage backend (sqlite/postgres via ENV)
+- [ ] QueryData command with SQL-based interface
+- [ ] DataRepository.query() read port
+- [ ] Query HTTP endpoint
 
 ### Out of Scope
 
-- Generic QueryData — deferred until AddData flow is solid
-- General HTTP API — Nango webhooks only for v1
-- Multiple storage backends — PostgreSQL only
+- Event consumers — deferred to v3.0
+- Schema drift detection — deferred to v3.0
 - Real-time streaming — batch/webhook model for now
 
 ## Context
@@ -85,13 +88,16 @@ Data from connected integrations flows reliably into the platform with strict va
 - InMemoryEventPublisher stores events that are never consumed
 - session.py helpers unused in production (app.py reimplements inline)
 
-## Next Milestone Goals (v2.0)
+## Current Milestone: v2.0 Production Storage & Query
 
-Potential focus areas for next milestone:
-- PostgreSQL production adapter
-- Event consumers (process DataAddedEvent downstream)
-- Schema drift detection
-- Retry with exponential backoff for transient failures
+**Goal:** Production-ready storage with configurable backends (SQLite/PostgreSQL) and SQL-based query capability
+
+**Target features:**
+- PostgreSQL adapter (asyncpg) alongside existing SQLite
+- ENV-based backend configuration
+- QueryData command with parameterized SQL in kernel
+- Read port on DataRepository
+- Query HTTP endpoint via FastAPI
 
 ---
-*Last updated: 2026-03-19 after v1.0 milestone completion*
+*Last updated: 2026-03-19 after v2.0 milestone started*
