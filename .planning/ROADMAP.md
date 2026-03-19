@@ -62,7 +62,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Add asyncpg dependency, extend DataRepository Protocol with query(), create FakeDataRepository
+- [x] 04-01-PLAN.md — Add asyncpg dependency, extend DataRepository Protocol with query(), create FakeDataRepository
 - [ ] 04-02-PLAN.md — Implement PostgresDataRepository with full Protocol compliance and idempotent inserts
 - [ ] 04-03-PLAN.md — Wire backend factory, update dependencies.py, ENV-aware migrations, health backend reporting
 
@@ -92,5 +92,5 @@ Plans:
 | 1. Foundation & Kernel | v0.0.1 | 4/4 | Complete | 2026-03-18 |
 | 2. Persistence & Data Flow | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 3. Webhook Transport & Observability | v0.0.1 | 3/3 | Complete | 2026-03-18 |
-| 4. PostgreSQL Backend | v0.1.0 | 0/3 | Planned | - |
+| 4. PostgreSQL Backend | v0.1.0 | 1/3 | Executing | - |
 | 5. Query Capability | v0.1.0 | 0/3 | Not started | - |

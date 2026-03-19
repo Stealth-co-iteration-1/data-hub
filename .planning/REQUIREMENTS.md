@@ -10,7 +10,7 @@ Requirements for v0.1.0 milestone: Production Storage & Query.
 ### PostgreSQL
 
 - [ ] **PGRS-01**: User can run data-hub against PostgreSQL via DATABASE_URL
-- [ ] **PGRS-02**: PostgreSQL adapter uses asyncpg driver for async operations
+- [x] **PGRS-02**: PostgreSQL adapter uses asyncpg driver for async operations
 - [ ] **PGRS-03**: Idempotent inserts on PostgreSQL prevent duplicate records (ON CONFLICT parity with SQLite)
 
 ### Backend Configuration
@@ -72,7 +72,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PGRS-01 | Phase 4 | Pending |
-| PGRS-02 | Phase 4 | Pending |
+| PGRS-02 | Phase 4 | Complete |
 | PGRS-03 | Phase 4 | Pending |
 | CONF-01 | Phase 4 | Pending |
 | CONF-02 | Phase 4 | Pending |
