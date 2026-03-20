@@ -16,6 +16,7 @@ class FakeDataRepository:
     def __init__(self) -> None:
         self.records: dict[str, dict[str, Any]] = {}
         self.add_calls: list[tuple[str, str, dict[str, Any]]] = []
+        self.query_calls: list[tuple[str, dict[str, Any] | None, int]] = []
 
     async def add(
         self,
@@ -43,6 +44,39 @@ class FakeDataRepository:
         if record and record["model"] == model:
             return record["data"]
         return None
+
+    async def query(
+        self,
+        model: str,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Query records with optional filters.
+
+        V1: filters supports connection_id only (no JSON field filtering).
+        Returns dicts with system fields (id, connection_id, model, created_at) + data.
+        """
+        self.query_calls.append((model, filters, limit))
+        results = []
+        for record_id, record in self.records.items():
+            if record["model"] != model:
+                continue
+            # V1: Only filter on connection_id (a real column, not JSON field)
+            if filters:
+                if "connection_id" in filters:
+                    if record.get("connection_id") != filters["connection_id"]:
+                        continue
+            # Return with system fields per CONTEXT.md decision
+            results.append({
+                "id": record_id,
+                "connection_id": record.get("connection_id", ""),
+                "model": record["model"],
+                "created_at": record.get("created_at", ""),
+                **record["data"],
+            })
+            if len(results) >= limit:
+                break
+        return results
 
 
 class FakeEventPublisher:
