@@ -55,3 +55,33 @@ export interface SyncMetadata_github_listfiles {
   repo: string;
   branch: string;
 };
+
+export interface Opportunity {
+  id: string;
+  Id: string;
+  Name: string;
+  Amount: number | null;
+  StageName: string;
+  IsClosed: boolean;
+  IsWon: boolean;
+  CloseDate: string;
+  CreatedDate: string;
+  LastModifiedDate: string;
+  ForecastCategoryName: string | null;
+  Probability: number | null;
+  Type: string | null;
+  LeadSource: string | null;
+  OwnerId: string;
+  Account: {  Name: string | null;
+  Industry: string | null;
+  AnnualRevenue: number | null;} | null;
+  Owner: {  Name: string | null;
+  Email: string | null;};
+  OpportunityContactRoles: {  records: ({  Id: string;
+  ContactId: string;
+  Role: string | null;
+  IsPrimary: boolean;
+  Contact: {  Email: string | null;};})[];} | null;
+};
+
+export type SyncMetadata_salesforce_fetchopportunities = void

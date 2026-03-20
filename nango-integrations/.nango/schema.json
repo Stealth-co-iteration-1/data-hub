@@ -156,6 +156,215 @@
         "branch"
       ],
       "additionalProperties": false
+    },
+    "Opportunity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Amount": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "StageName": {
+          "type": "string"
+        },
+        "IsClosed": {
+          "type": "boolean"
+        },
+        "IsWon": {
+          "type": "boolean"
+        },
+        "CloseDate": {
+          "type": "string"
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "LastModifiedDate": {
+          "type": "string"
+        },
+        "ForecastCategoryName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Probability": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "Type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "LeadSource": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OwnerId": {
+          "type": "string"
+        },
+        "Account": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "Industry": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "AnnualRevenue": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Name",
+                "Industry",
+                "AnnualRevenue"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Owner": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "Name",
+            "Email"
+          ],
+          "additionalProperties": false
+        },
+        "OpportunityContactRoles": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "records": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "Id": {
+                        "type": "string"
+                      },
+                      "ContactId": {
+                        "type": "string"
+                      },
+                      "Role": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "IsPrimary": {
+                        "type": "boolean"
+                      },
+                      "Contact": {
+                        "type": "object",
+                        "properties": {
+                          "Email": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "Email"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "Id",
+                      "ContactId",
+                      "Role",
+                      "IsPrimary",
+                      "Contact"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "records"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "Name",
+        "Amount",
+        "StageName",
+        "IsClosed",
+        "IsWon",
+        "CloseDate",
+        "CreatedDate",
+        "LastModifiedDate",
+        "ForecastCategoryName",
+        "Probability",
+        "Type",
+        "LeadSource",
+        "OwnerId",
+        "Account",
+        "Owner",
+        "OpportunityContactRoles"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchopportunities": {
+      "type": "null"
     }
   },
   "$comment": "This file was generated by Nango (v0.69.45)"

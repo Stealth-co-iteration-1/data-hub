@@ -255,5 +255,319 @@
       ],
       "validate-connection": []
     }
+  },
+  {
+    "providerConfigKey": "salesforce",
+    "actions": [],
+    "syncs": [
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce Opportunity records with Account, Owner, and OpportunityContactRoles relationships.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/opportunities",
+            "group": "Opportunities"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchopportunities",
+        "name": "fetch-opportunities",
+        "output": [
+          "Opportunity"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "Opportunity",
+          "SyncMetadata_salesforce_fetchopportunities"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "Opportunity": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Name": {
+                  "type": "string"
+                },
+                "Amount": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "StageName": {
+                  "type": "string"
+                },
+                "IsClosed": {
+                  "type": "boolean"
+                },
+                "IsWon": {
+                  "type": "boolean"
+                },
+                "CloseDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                },
+                "LastModifiedDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                },
+                "ForecastCategoryName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Probability": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Type": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "LeadSource": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "OwnerId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Account": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "Industry": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "AnnualRevenue": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Name",
+                        "Industry",
+                        "AnnualRevenue"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Owner": {
+                  "type": "object",
+                  "properties": {
+                    "Name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "Email": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "Name",
+                    "Email"
+                  ],
+                  "additionalProperties": false
+                },
+                "OpportunityContactRoles": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "records": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "Id": {
+                                "type": "string",
+                                "minLength": 18,
+                                "maxLength": 18
+                              },
+                              "ContactId": {
+                                "type": "string",
+                                "minLength": 18,
+                                "maxLength": 18
+                              },
+                              "Role": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "IsPrimary": {
+                                "type": "boolean"
+                              },
+                              "Contact": {
+                                "type": "object",
+                                "properties": {
+                                  "Email": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "Email"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "Id",
+                              "ContactId",
+                              "Role",
+                              "IsPrimary",
+                              "Contact"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "records"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "Name",
+                "Amount",
+                "StageName",
+                "IsClosed",
+                "IsWon",
+                "CloseDate",
+                "CreatedDate",
+                "LastModifiedDate",
+                "ForecastCategoryName",
+                "Probability",
+                "Type",
+                "LeadSource",
+                "OwnerId",
+                "Account",
+                "Owner",
+                "OpportunityContactRoles"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchopportunities": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    ],
+    "onEventScripts": {
+      "post-connection-creation": [],
+      "pre-connection-deletion": [],
+      "validate-connection": []
+    }
   }
 ]
