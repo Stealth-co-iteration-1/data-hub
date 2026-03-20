@@ -1,139 +1,231 @@
 # Stack Research
 
-**Domain:** PostgreSQL adapter, configurable storage backends, SQL query capability (data-hub v2.0)
-**Researched:** 2026-03-19
+**Domain:** Dagster-based pull ingestion pipeline — Salesforce via Nango proxy (data-hub v0.3)
+**Researched:** 2026-03-20
 **Confidence:** HIGH
 
 ## Context
 
-This is a SUBSEQUENT MILESTONE research file. The existing v1.0 stack (FastAPI, SQLAlchemy 2.0 async, aiosqlite, Alembic, Pydantic, structlog, prometheus_client, pydantic-settings) is already validated and locked. This document covers ONLY what must be added or changed for:
+This is a SUBSEQUENT MILESTONE research file. The following stack is already validated and locked — do not re-research or re-add:
 
-1. PostgreSQL async adapter (asyncpg driver)
-2. ENV-based configurable backend (sqlite/postgres)
-3. QueryData kernel command with parameterized SQL read port
+- Python 3.12+, FastAPI, SQLAlchemy 2.0 async, asyncpg, structlog, prometheus_client, Pydantic, Alembic
+- PostgreSQL and SQLite adapters via hexagonal architecture
+- Webhook ingestion with HMAC verification
+- Schema validation with structured error reporting
+- httpx is already in `[dependency-groups] dev` as a test utility
 
-Nothing below modifies the existing stack. All additions are additive.
+This document covers ONLY what must be added for v0.3: Dagster orchestration, Nango proxy client, Salesforce SOQL HTTP calls.
+
+All additions below are **additive**. Nothing in the existing stack changes.
 
 ---
 
 ## New Stack Additions
 
-### Core Driver
+### Core Orchestration
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| asyncpg | `>=0.31.0` | Native async PostgreSQL driver | SQLAlchemy's asyncio extension requires an async-capable DBAPI. asyncpg is the de facto standard: it is SQLAlchemy's first and primary async dialect for PostgreSQL, ships binary wheels for Python 3.12 and 3.13, and has no synchronous fallback overhead. psycopg3 is the only credible alternative; asyncpg has broader adoption in the FastAPI ecosystem and the project already names this driver in PROJECT.md. |
+| `dagster` | `>=1.12.20` | Asset orchestration runtime and scheduler | Current stable release (1.12.20 as of 2026-03-19). Dagster's software-defined assets model is the correct abstraction for a pull-based ingestion pipeline — each Salesforce object becomes an asset with lineage, metadata, and retry semantics built-in. The only credible alternative (Prefect, Airflow) provides no meaningful advantage for this scale and introduces higher operational overhead. |
+| `dagster-webserver` | `>=1.12.20` | Local dev UI — asset graph, run history, logs | Required to run `dg dev`. Provides the local Dagster UI at `localhost:3000`. Listed as a dev dependency by Dagster's own project scaffolder. Deploy to Dagster Cloud does not require it in production images, only during local development. |
 
-**pyproject.toml change:**
+**pyproject.toml changes:**
+
 ```toml
 dependencies = [
-    # ... existing deps ...
-    "asyncpg>=0.31.0",  # NEW: PostgreSQL async driver
+    # ... existing deps unchanged ...
+    "dagster>=1.12.20",          # NEW: orchestration runtime
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",             # already present
+    "dagster-webserver>=1.12.20", # NEW: local dev UI
+    "pytest>=8.3",               # already present
+    "pytest-asyncio>=0.24",      # already present
+    "pytest-cov>=6.0",           # already present
+    "ruff>=0.9",                 # already present
+    "pyright>=1.1",              # already present
 ]
 ```
 
 **Install:**
+
 ```bash
-uv add asyncpg
+uv add dagster
+uv add --dev dagster-webserver
 ```
 
-No other new packages are required. `sqlalchemy[asyncio]` is already present and activates all PostgreSQL async dialect machinery built into SQLAlchemy 2.0.
+### HTTP Client for Nango Proxy
 
-### No Other Package Changes
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| `httpx` | `>=0.28.1` | Synchronous HTTP client for Nango proxy calls | httpx is already a dev dependency. Promote it to a production dependency for the Nango `ConfigurableResource`. Dagster's execution model is synchronous by default — assets run in threads, not an event loop. Using httpx's sync `Client` is the correct, straightforward pattern. Async `AsyncClient` inside a Dagster asset requires explicit event loop management (`asyncio.run()` or `anyio.from_thread.run_sync()`) and provides no throughput benefit for serial SOQL pagination. httpx sync client is simpler and correct for this use case. |
 
-SQLAlchemy 2.0.48 (already pinned) ships the `postgresql+asyncpg` dialect built-in at `sqlalchemy.dialects.postgresql`. The `create_async_engine`, `async_sessionmaker`, and `AsyncSession` already in use for SQLite work identically for PostgreSQL — only the connection URL changes.
+**pyproject.toml change:**
+
+```toml
+dependencies = [
+    # Move httpx from dev to production:
+    "httpx>=0.28.1",   # NEW: promoted from dev-only; Nango proxy HTTP calls
+]
+```
+
+**Remove from `[dependency-groups] dev`** — it moves to main `dependencies`.
+
+---
+
+## No Additional Packages Required
+
+The Nango proxy integration does NOT require a Nango Python SDK. Nango's official Python SDK page shows "Coming soon — use the REST API in the meantime." The proxy is called directly via httpx with three headers (see Integration Points). No `nango` package needed.
+
+The Salesforce integration does NOT require `dagster-salesforce` or `simple-salesforce`. Those packages authenticate directly to Salesforce — incompatible with the Nango proxy authentication model where Nango holds the OAuth tokens and injects credentials on behalf of the connection. Custom SOQL queries via the Nango proxy URL are straightforward with httpx.
+
+PostgreSQL persistence reuses the existing `PostgreSQLDataRepository` (already validated in v0.2.0). No new ORM or persistence library is needed.
 
 ---
 
 ## Supporting Libraries (Unchanged)
 
-No new supporting libraries needed.
-
-| Area | Current Library | Status |
-|------|----------------|--------|
-| Migrations | Alembic 1.18.4 | Unchanged — already uses async `env.py` pattern; supports PostgreSQL URL transparently |
-| Config | pydantic-settings 2.13.1 | Unchanged — `database_url` field already in `Settings`; ENV override is native |
-| Testing | pytest + pytest-asyncio | Unchanged — PostgreSQL adapter tests use same fixture pattern as SQLite tests |
+| Area | Current Library | Status for v0.3 |
+|------|----------------|----------------|
+| ORM / persistence | SQLAlchemy 2.0 async + asyncpg | Unchanged — existing `PostgreSQLDataRepository` used as-is |
+| Migrations | Alembic 1.18.4 | Unchanged — no new tables for v0.3 (raw JSON goes into existing `data_records`) |
+| Config | pydantic-settings 2.13.1 | Unchanged — add `NANGO_SECRET_KEY`, `NANGO_CONNECTION_ID`, `NANGO_PROVIDER_CONFIG_KEY` env vars to existing `Settings` model |
+| Logging | structlog 25.5.0 | Unchanged — Dagster assets log via `context.log`; structlog remains for the FastAPI transport |
+| Testing | pytest + pytest-asyncio | Unchanged — Dagster provides `materialize()` and `build_asset_context()` helpers; no new test framework needed |
 
 ---
 
 ## Integration Points
 
-### 1. Connection URL — ENV-Based Backend Switching
+### 1. Dagster `Definitions` entry point
 
-The existing `settings.py` already has:
+Dagster loads from a `definitions.py` file at the root of the Dagster package. The project should co-locate this within `src/` as a separate package from the existing FastAPI app:
+
+```
+src/
+  data_hub/         # existing FastAPI app (unchanged)
+  pipeline/         # new Dagster package
+    __init__.py
+    definitions.py  # Dagster entry point: Definitions(assets=[...], resources={...})
+    assets/
+      salesforce.py # @asset functions for Opportunity, OpportunityHistory, Task, Event
+    resources/
+      nango.py      # NangoResource(ConfigurableResource)
+```
+
+`definitions.py` structure:
 
 ```python
-database_url: str = "sqlite+aiosqlite:///./data.db"
-```
+import dagster as dg
+from .assets.salesforce import (
+    salesforce_opportunities,
+    salesforce_opportunity_history,
+    salesforce_tasks,
+    salesforce_events,
+)
+from .resources.nango import NangoResource
 
-No new setting is required. Switching backends is done at deploy time via one ENV var:
-
-```bash
-# Development (default)
-DATABASE_URL=sqlite+aiosqlite:///./data.db
-
-# Production
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
-```
-
-SQLAlchemy infers the driver and dialect from the URL scheme. No `STORAGE_BACKEND` flag, no conditional imports, no factory pattern beyond what already exists. This is the standard SQLAlchemy 2.0 pattern.
-
-### 2. PostgreSQL Adapter Module
-
-The new adapter lives at `src/adapters/driven/postgres/` alongside the existing `src/adapters/driven/sqlite/`. It implements the same `DataRepository` Protocol in `src/kernel/ports/repository.py` — no kernel changes needed for `add()` and `get()`.
-
-The key implementation difference from the SQLite adapter is the upsert import:
-
-**SQLite adapter (existing):**
-```python
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-stmt = sqlite_insert(DataRecord).values(...).on_conflict_do_nothing(index_elements=["event_id"])
-```
-
-**PostgreSQL adapter (new):**
-```python
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-stmt = pg_insert(DataRecord).values(...).on_conflict_do_nothing(index_elements=["event_id"])
-```
-
-Both dialects expose the identical `.on_conflict_do_nothing()` API. The remaining repository logic (session factory, audit log transaction, `get()` query) is structurally identical — copy and adjust the import.
-
-The ORM models in `src/adapters/driven/sqlite/models.py` use standard SQLAlchemy column types (`String`, `JSON`, `DateTime`, `Integer`) that are PostgreSQL-compatible without modification. `sa.JSON` maps to PostgreSQL `JSON` by default; upgrading to `JSONB` for indexing is a later optimization, not required for v2.0.
-
-### 3. Alembic Migration Config
-
-The existing `migrations/env.py` already uses `async_engine_from_config` — the correct async Alembic pattern. No `env.py` changes are needed.
-
-To run migrations against PostgreSQL, override the URL at runtime:
-
-```bash
-# Option A: Update alembic.ini for production
-sqlalchemy.url = postgresql+asyncpg://user:pass@host:5432/dbname
-
-# Option B: Pass via -x flag (preferred for CI)
-alembic -x sqlalchemy.url=$DATABASE_URL upgrade head
-```
-
-The migration versions themselves (DDL: `CREATE TABLE`, `CREATE INDEX`) are PostgreSQL-compatible as written. SQLite-specific constructs like `sqlite_insert` exist only in application code, not migrations.
-
-### 4. QueryData Parameterized SQL — The Critical Pattern
-
-The `DataRepository` port needs a `query()` method. The kernel's `QueryData` command will call it with filter parameters. The correct parameterization approach with SQLAlchemy + asyncpg is:
-
-**Use `text()` with named parameters and dict execution:**
-```python
-from sqlalchemy import text
-
-result = await session.execute(
-    text("SELECT * FROM data_records WHERE model_name = :model AND connection_id = :conn"),
-    {"model": model_name, "conn": connection_id},
+defs = dg.Definitions(
+    assets=[
+        salesforce_opportunities,
+        salesforce_opportunity_history,
+        salesforce_tasks,
+        salesforce_events,
+    ],
+    resources={
+        "nango": NangoResource(
+            secret_key=dg.EnvVar("NANGO_SECRET_KEY"),
+            connection_id=dg.EnvVar("NANGO_CONNECTION_ID"),
+            provider_config_key=dg.EnvVar("NANGO_PROVIDER_CONFIG_KEY"),
+        )
+    },
 )
 ```
 
-SQLAlchemy's asyncpg dialect automatically rewrites `:named_param` syntax to PostgreSQL's native `$1` positional parameters before handing to asyncpg. The rewriting is handled transparently by the dialect layer. Named parameter style is the correct and safe pattern for the kernel query contract.
+### 2. Nango proxy `ConfigurableResource`
 
-**Do NOT use `exec_driver_sql()` for parameterized queries.** That method bypasses SQLAlchemy's parameter rewriting and sends SQL directly to asyncpg, which only accepts `$1` positional syntax. Named parameters passed to `exec_driver_sql()` cause `PostgresSyntaxError`. Use `session.execute(text(...), dict)` instead — this is the established SQLAlchemy 2.0 pattern.
+The Nango proxy is a pass-through HTTP layer. Every request hits `https://api.nango.dev/proxy/{path}` with three required headers:
+
+| Header | Value | Source |
+|--------|-------|--------|
+| `Authorization` | `Bearer {NANGO_SECRET_KEY}` | Nango environment secret |
+| `Connection-Id` | `{connection_id}` | The Salesforce connection established in Nango |
+| `Provider-Config-Key` | `{provider_config_key}` | The integration unique key in Nango |
+
+The resource wraps an httpx sync `Client` using `yield_for_execution` for connection pooling across asset materializations within a run:
+
+```python
+from pydantic import PrivateAttr
+import dagster as dg
+import httpx
+
+class NangoResource(dg.ConfigurableResource):
+    secret_key: str
+    connection_id: str
+    provider_config_key: str
+
+    _client: httpx.Client = PrivateAttr()
+
+    @contextmanager
+    def yield_for_execution(self, context):
+        headers = {
+            "Authorization": f"Bearer {self.secret_key}",
+            "Connection-Id": self.connection_id,
+            "Provider-Config-Key": self.provider_config_key,
+        }
+        with httpx.Client(
+            base_url="https://api.nango.dev",
+            headers=headers,
+            timeout=30.0,
+        ) as client:
+            self._client = client
+            yield self
+
+    def query_soql(self, soql: str) -> list[dict]:
+        # Salesforce REST API: /services/data/vXX.X/query?q=SOQL
+        path = "/proxy/services/data/v62.0/query"
+        records = []
+        url: str | None = path
+        while url:
+            resp = self._client.get(url, params={"q": soql} if url == path else None)
+            resp.raise_for_status()
+            body = resp.json()
+            records.extend(body.get("records", []))
+            next_url = body.get("nextRecordsUrl")
+            url = f"/proxy{next_url}" if next_url else None
+        return records
+```
+
+### 3. Asset pattern — full refresh to PostgreSQL
+
+Each asset materializes by querying Salesforce via the Nango resource and persisting via the existing `PostgreSQLDataRepository` (or directly via `asyncpg` from a sync thread using `asyncio.run()`):
+
+```python
+@dg.asset(required_resource_keys={"nango"})
+def salesforce_opportunities(context: dg.AssetExecutionContext) -> None:
+    records = context.resources.nango.query_soql(
+        "SELECT Id, Name, Amount, StageName, CloseDate FROM Opportunity"
+    )
+    # persist via existing AddData kernel command or direct repository call
+    context.log.info(f"Fetched {len(records)} Opportunity records")
+```
+
+### 4. Running Dagster dev locally
+
+```bash
+# From project root with pyproject.toml
+dg dev --module-name pipeline.definitions
+# OR if definitions.py is auto-discovered:
+dagster dev -f src/pipeline/definitions.py
+```
+
+Dagster UI opens at `http://localhost:3000`.
+
+### 5. Dagster Cloud deployment
+
+For Dagster Cloud (Dagster+), the project needs a `dagster_cloud.yaml` at the project root specifying the code location. No `dagster-cloud` agent package is required for serverless mode — it is handled by the Dagster Cloud infrastructure. For hybrid deployment, `dagster-cloud` agent is added to the host machine, not the project's `pyproject.toml`.
 
 ---
 
@@ -141,10 +233,11 @@ SQLAlchemy's asyncpg dialect automatically rewrites `:named_param` syntax to Pos
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| `asyncpg>=0.31.0` | `psycopg[binary]` (psycopg3) | If synchronous usage alongside async is required, or if COPY protocol / logical replication features are needed. asyncpg is faster in async-only workloads and is the more battle-tested SQLAlchemy asyncio dialect as of 2026. |
-| Single `database_url` ENV var | Separate `STORAGE_BACKEND` flag + conditional factory | The flag approach adds conditional import complexity for zero benefit. URL-based switching is the canonical SQLAlchemy pattern and aligns with existing `pydantic-settings` setup. |
-| Shared ORM models (existing `sqlite/models.py`) | Duplicate models in `postgres/models.py` | Sharing is correct for v2.0 since both adapters use the same schema. If PostgreSQL-specific column types (e.g., native `JSONB`, `UUID`) are needed in a future milestone, a PostgreSQL-specific model override is acceptable then. |
-| `text()` with named params + dict | SQLAlchemy ORM `select()` constructs | ORM `select()` is better for complex joins and IDE type safety. For `QueryData` with user-supplied filters, `text()` with strict parameter binding is simpler and more transparent. |
+| `dagster>=1.12.20` | Prefect 3.x | If the team is already standardized on Prefect. For a new pipeline with no prior orchestrator, Dagster's asset-first model is better suited to data lineage and observability. |
+| `dagster>=1.12.20` | Apache Airflow 2.x | If deploying in an organization with existing Airflow infrastructure. Airflow has higher operational overhead for small teams and lacks native asset lineage. |
+| httpx sync `Client` in `ConfigurableResource` | httpx `AsyncClient` with `asyncio.run()` | If making hundreds of concurrent API calls per asset. For serial SOQL pagination (5–10 API calls per asset), sync is simpler and correct. |
+| Custom Nango proxy resource (httpx) | `dagster-salesforce` + `simple-salesforce` | If authenticating directly to Salesforce without Nango. These libraries own auth — they conflict with Nango's token injection model. |
+| Raw JSON to existing `data_records` table | New raw staging tables per entity | If downstream consumers need typed columns. For v0.3, raw JSON in existing table is consistent with the webhook ingestion path already validated. |
 
 ---
 
@@ -152,11 +245,12 @@ SQLAlchemy's asyncpg dialect automatically rewrites `:named_param` syntax to Pos
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `exec_driver_sql()` for parameterized queries | Bypasses SQLAlchemy dialect layer; asyncpg rejects `:name` syntax at driver level, raising `PostgresSyntaxError` | `session.execute(text("... :param ..."), {"param": value})` |
-| `psycopg2` (sync driver) | Incompatible with SQLAlchemy asyncio extension; blocks the event loop | `asyncpg` |
-| `databases` library | Superseded by SQLAlchemy 2.0 async; adds a dependency without benefit | SQLAlchemy 2.0 `create_async_engine` (already in use) |
-| String formatting in `text()` queries | SQL injection vulnerability for user-supplied filter values | Named parameters: `text("... :param"), {"param": value}` |
-| `pytest-postgresql` | Unnecessary complexity for v2.0; the repository Protocol can be tested with a real PostgreSQL container in CI using the same in-code fixture pattern that exists for SQLite | Docker Compose `postgres:16-alpine` service in CI + `create_async_engine` fixture |
+| `dagster-salesforce` | Authenticates directly to Salesforce — requires `username/password/security_token` credentials. Incompatible with Nango proxy model where Nango holds OAuth tokens and injects Authorization. Adding both creates conflicting auth flows. | httpx `NangoResource` with proxy headers |
+| `simple-salesforce` | Same problem as `dagster-salesforce` — direct auth to Salesforce, bypasses Nango entirely | httpx `NangoResource` |
+| `nango` Python package | Does not exist. Nango's Python SDK page says "Coming soon — use the REST API". No installable package. | Direct httpx calls to `https://api.nango.dev/proxy/...` |
+| `dagster-cloud` in `pyproject.toml` | The `dagster-cloud` package is the hybrid agent, not a project dependency. For serverless Dagster+, CI/CD pushes code and Dagster+ manages execution. Adding it to project deps introduces unnecessary weight. | `dagster_cloud.yaml` config file only |
+| `asyncio.run()` inside assets | Creates a new event loop per call; breaks if called from an existing loop context. Dagster assets are synchronous by design. | httpx sync `Client` inside `ConfigurableResource` |
+| `dagster-dg-cli` in `dependencies` (production) | CLI scaffolding tool only — not needed at runtime. Adds ~50MB to production container. | Keep in `[dependency-groups] dev` only |
 
 ---
 
@@ -164,46 +258,51 @@ SQLAlchemy's asyncpg dialect automatically rewrites `:named_param` syntax to Pos
 
 | Package | Version | Compatible With | Notes |
 |---------|---------|-----------------|-------|
-| `asyncpg` | `>=0.31.0` | SQLAlchemy 2.0.48, Python 3.12, Python 3.13 | 0.31.0 ships binary wheels for CPython 3.10–3.14; no compilation needed. This is the latest stable release as of November 2025. |
-| `sqlalchemy[asyncio]` | 2.0.48 (already pinned) | asyncpg 0.29+, aiosqlite 0.20+ | No upgrade needed; 2.0.48 fully supports the `postgresql+asyncpg` dialect |
-| `alembic` | 1.18.4 (already pinned) | asyncpg via `async_engine_from_config` | `env.py` already uses the correct async pattern; no changes needed |
+| `dagster` | `>=1.12.20` | Python 3.10–3.14 | 1.12.20 is latest as of 2026-03-19. Python 3.12 fully supported. All packages in the dagster ecosystem (dagster, dagster-webserver) must be on the same version — they are co-versioned. |
+| `dagster-webserver` | `>=1.12.20` | dagster 1.12.20 | Must match dagster version exactly. Dev-only. |
+| `httpx` | `>=0.28.1` | Python 3.8+, no conflict with any existing dep | 0.28.1 is current stable as of December 2024. httpx is already in the lock file as a dev dep; moving to production adds no new resolution. |
+| `dagster` | `>=1.12.20` | SQLAlchemy 2.0 async + asyncpg | Dagster does not use SQLAlchemy internally for your project's database. The two coexist without conflict — Dagster uses its own sqlite-based run storage by default (separate DB from your data_records). |
 
 ---
 
 ## Stack Patterns by Variant
 
-**If running SQLite (development / CI without PostgreSQL):**
-- `DATABASE_URL=sqlite+aiosqlite:///./data.db` (default in settings.py)
-- `SQLiteDataRepository` with `sqlalchemy.dialects.sqlite.insert`
-- In-memory for tests: `sqlite+aiosqlite:///:memory:`
+**If running local development:**
 
-**If running PostgreSQL (staging / production):**
-- `DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname`
-- `PostgreSQLDataRepository` with `sqlalchemy.dialects.postgresql.insert`
-- Alembic URL also needs to point at PostgreSQL for migration runs
+- Install: `uv add dagster && uv add --dev dagster-webserver`
+- Run: `dagster dev -f src/pipeline/definitions.py`
+- Nango environment variables: `NANGO_SECRET_KEY`, `NANGO_CONNECTION_ID`, `NANGO_PROVIDER_CONFIG_KEY`
+- Database: existing `DATABASE_URL=postgresql+asyncpg://...` — reuses existing PostgreSQL container
 
-**If adding PostgreSQL integration tests in CI:**
-- Use a Docker Compose service (`postgres:16-alpine`) and set `DATABASE_URL` in CI env
-- Write a `conftest.py` fixture matching the existing SQLite pattern in `tests/integration/conftest.py`:
-  ```python
-  eng = create_async_engine(settings.database_url, echo=False)
-  async with eng.begin() as conn:
-      await conn.run_sync(Base.metadata.create_all)
-  ```
-- No `pytest-postgresql` or `pytest-mock-resources` needed for v2.0
+**If deploying to Dagster Cloud (serverless):**
+
+- Add `dagster_cloud.yaml` to project root pointing to code location
+- CI/CD (GitHub Actions) uses Dagster's published action to deploy code
+- No `dagster-cloud` package in pyproject.toml for serverless mode
+- Production container only needs `dagster` (runtime), not `dagster-webserver`
+
+**If adding unit tests for assets:**
+
+- Use `dagster.materialize()` for full asset execution with real or mock resources
+- Use `build_asset_context()` for isolated function-level tests
+- Mock `NangoResource` by subclassing it and overriding `query_soql()` — avoids live API calls in CI
 
 ---
 
 ## Sources
 
-- [asyncpg on PyPI](https://pypi.org/project/asyncpg/) — version 0.31.0 confirmed, Python 3.12/3.13 wheels verified (HIGH confidence)
-- [asyncpg GitHub releases](https://github.com/MagicStack/asyncpg/releases) — 0.31.0 release date November 24, 2025 confirmed (HIGH confidence)
-- [SQLAlchemy 2.0 Async I/O docs](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html) — `postgresql+asyncpg://` URL format, `create_async_engine`, session patterns (HIGH confidence)
-- [SQLAlchemy 2.0 PostgreSQL dialect docs](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html) — `from sqlalchemy.dialects.postgresql import insert` for `on_conflict_do_nothing()` (HIGH confidence)
-- [SQLAlchemy issue #6452](https://github.com/sqlalchemy/sqlalchemy/issues/6452) — `exec_driver_sql` vs `execute(text())` for asyncpg named parameters; `execute(text(...), dict)` is correct and safe (HIGH confidence)
-- [SQLAlchemy discussion #7192](https://github.com/sqlalchemy/sqlalchemy/discussions/7192) — asyncpg parameter rewriting handled by dialect layer when using `session.execute`; `text()` with named params works correctly (HIGH confidence)
-- Codebase inspection (`pyproject.toml`, `uv.lock`, `settings.py`, `repository.py`, `session.py`, `migrations/env.py`) — SQLAlchemy 2.0.48, aiosqlite 0.20, Alembic 1.18.4 confirmed; asyncpg not yet present in lock file (HIGH confidence)
+- [dagster on PyPI](https://pypi.org/project/dagster/) — version 1.12.20 confirmed, Python 3.10–3.14 support, release date 2026-03-19 (HIGH confidence)
+- [dagster-webserver on PyPI](https://pypi.org/project/dagster-webserver/) — version 1.12.20, co-versioned with dagster (HIGH confidence)
+- [Dagster project structure docs](https://docs.dagster.io/guides/build/projects/project-structure/project-overview) — `definitions.py` entry point, `src/` layout, `defs/` convention (HIGH confidence)
+- [Dagster external resources docs](https://docs.dagster.io/guides/build/external-resources) — `ConfigurableResource` pattern, `PrivateAttr`, `yield_for_execution` lifecycle (HIGH confidence)
+- [Dagster managing resource state docs](https://docs.dagster.io/guides/build/external-resources/managing-resource-state) — `yield_for_execution` with context manager for HTTP client session pooling (HIGH confidence)
+- [Dagster async blog post](https://dagster.io/blog/when-sync-isnt-enough) — sync-first execution model confirmed; async requires explicit `dagster-async-executor`; sync httpx recommended for I/O-bound serial calls (MEDIUM confidence)
+- [Nango proxy GET API reference](https://nango.dev/docs/reference/api/proxy/get) — URL format `https://api.nango.dev/proxy/{anyPath}`, required headers `Connection-Id`, `Provider-Config-Key`, `Authorization: Bearer` (HIGH confidence)
+- [Nango Python SDK page](https://nango.dev/docs/reference/sdks/python) — SDK status: "Coming soon — use the REST API". No installable Python package exists. (HIGH confidence)
+- [httpx on PyPI](https://pypi.org/project/httpx/) — version 0.28.1, sync and async client support confirmed (HIGH confidence)
+- [Dagster Cloud dagster_cloud.yaml reference](https://docs.dagster.io/deployment/code-locations/dagster-cloud-yaml) — deployment config structure, no `dagster-cloud` package needed for serverless (MEDIUM confidence)
+- [Dagster unit testing assets docs](https://docs.dagster.io/guides/test/unit-testing-assets-and-ops) — `materialize()`, `build_asset_context()`, resource mocking patterns (HIGH confidence)
 
 ---
-*Stack research for: data-hub v2.0 — PostgreSQL adapter, configurable backends, SQL query capability*
-*Researched: 2026-03-19*
+*Stack research for: data-hub v0.3 — Dagster Salesforce pipeline via Nango proxy*
+*Researched: 2026-03-20*

@@ -1,203 +1,226 @@
 # Pitfalls Research
 
-**Domain:** Python hexagonal service — PostgreSQL adapter, multi-backend configuration, SQL query interface
-**Researched:** 2026-03-19
-**Confidence:** HIGH (all critical items verified against official docs and multiple authoritative sources)
+**Domain:** Dagster Salesforce pipeline — adding pull-based ingestion to existing Python FastAPI service via Nango proxy
+**Researched:** 2026-03-20
+**Confidence:** HIGH for Dagster/Salesforce pitfalls (official docs + community issues verified); MEDIUM for Nango proxy specifics (official docs verified, Python client patterns from community)
 
-> This file was updated for v2.0 milestone research. It supersedes the v1.0 pitfalls for the new
-> active requirements: PostgreSQL adapter (asyncpg), configurable storage backend, QueryData command.
-> v1.0 pitfalls that remain relevant (kernel purity, transaction boundaries, idempotency) are
-> retained at the bottom under "Carried-Forward Pitfalls."
+> This file supersedes the v0.2.0 pitfalls document for the v0.3 milestone: Dagster-based Salesforce
+> ingestion. Pitfalls from prior milestones that remain structurally relevant are carried forward at
+> the bottom. New content focuses exclusively on the Dagster + Nango + Salesforce integration domain.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Dialect-Specific ON CONFLICT Breaks on Backend Swap
+### Pitfall 1: Dagster SQLite Storage Breaks Under Concurrent Runs
 
 **What goes wrong:**
-The existing `SQLiteDataRepository.add()` imports `from sqlalchemy.dialects.sqlite import insert as sqlite_insert` and calls `.on_conflict_do_nothing()`. When writing the PostgreSQL adapter, copying this pattern with the wrong import produces a runtime error. SQLAlchemy's SQLite and PostgreSQL dialects expose structurally similar but incompatible `insert` constructors. The PostgreSQL equivalent requires `from sqlalchemy.dialects.postgresql import insert as pg_insert`. Using the SQLite import against a PostgreSQL engine raises `CompileError` at query execution time, not at import time.
+Dagster's default local storage backend is SQLite — for run storage, event log, and schedule storage. When `dagster dev` starts and materializes multiple assets concurrently (which happens by default), SQLite's file-locking causes stochastic failures: `database is locked` errors in the event log writer, corrupted run state, or silent hangs waiting for a lock that never releases. The Dagster daemon and the web server both write to the same SQLite files simultaneously. This is documented in the Dagster community as a known SQLite limitation: "SQLite event database is locked" appears in community discussions about Dagster instances with any parallelism.
 
 **Why it happens:**
-Both dialects support `ON CONFLICT DO NOTHING` syntactically. Developers assume "same feature, same code" and copy the adapter without auditing the dialect import. The problem is invisible until the PostgreSQL engine executes the statement.
+`dagster dev` initializes a local instance under `$DAGSTER_HOME` (defaulting to `~/.dagster`) with SQLite storage. The developer runs a job or materializes all four Salesforce assets at once — Opportunity, OpportunityHistory, Task, Event. Each asset runs in a separate process. Multiple processes writing to the same SQLite event log file triggers the lock contention.
 
 **How to avoid:**
-Each adapter file imports only its own dialect insert. The PostgreSQL adapter uses `pg_insert(...).on_conflict_do_nothing(index_elements=["event_id"])`. Do not share insert construction logic between adapters via a common utility. Write an explicit integration test that inserts a record with a duplicate `event_id` against a real PostgreSQL connection and asserts `rowcount == 0` without raising an exception.
+Configure Dagster's internal storage to use PostgreSQL (the same PostgreSQL instance already running for the data-hub service is appropriate). Create a `dagster.yaml` under `$DAGSTER_HOME` or in the project root:
+
+```yaml
+storage:
+  postgres:
+    postgres_db:
+      username: { env: DAGSTER_POSTGRES_USER }
+      password: { env: DAGSTER_POSTGRES_PASSWORD }
+      hostname: { env: DAGSTER_POSTGRES_HOST }
+      db_name: { env: DAGSTER_POSTGRES_DB }
+      port: 5432
+```
+
+Add `dagster-postgres` to project dependencies. This eliminates all SQLite locking issues and mirrors the production storage backend from day one.
 
 **Warning signs:**
-- `sqlalchemy.dialects.sqlite` appears in the PostgreSQL adapter module file
-- No integration test for duplicate `event_id` runs against the PostgreSQL engine (only SQLite or in-memory)
-- `CompileError: Unconsumed column names` or `AttributeError` at first PostgreSQL insert
+- `database is locked` appears in Dagster logs during concurrent materializations
+- Dagster daemon silently stops processing schedules after a lock error
+- `dagster instance migrate` is required after every Dagster upgrade and the migration fails with a SQLite lock error
+- Runs show `STARTED` in the UI but never transition to `SUCCESS` or `FAILURE`
 
 **Phase to address:**
-PostgreSQL adapter phase. Acceptance criteria must include: idempotency test passes against a PostgreSQL fixture, not only the existing in-memory SQLite fixture.
+Dagster local dev setup phase. Do not proceed to asset authoring until Dagster internal storage is confirmed on PostgreSQL. The acceptance criterion is: materialize all four Salesforce assets simultaneously with no storage lock errors.
 
 ---
 
-### Pitfall 2: alembic.ini Hardcodes SQLite URL — Migrations Silently Target Wrong Database
+### Pitfall 2: Nango Proxy Missing Required Headers Cause Opaque 400/401 Errors
 
 **What goes wrong:**
-`alembic.ini` line 89 is `sqlalchemy.url = sqlite+aiosqlite:///./data.db`. When `alembic upgrade head` is run in any PostgreSQL environment (CI, staging, production), if `migrations/env.py` reads the URL from `alembic.ini` without first checking `DATABASE_URL` from the environment, migrations execute against the local SQLite file. The command exits 0, the PostgreSQL instance is never migrated, and the first request fails with a missing-table error — in production.
+The Nango proxy requires three specific headers on every request: `Authorization: Bearer <NANGO_SECRET_KEY>`, `Connection-Id: <connection_id>`, and `Provider-Config-Key: <integration_id>`. Missing any one of these returns a 400 or 401 from Nango's proxy layer — not from Salesforce — with a generic error message that doesn't identify which header is missing. The Salesforce `connection_id` in this project is per-Staq-customer: there is one Nango connection per Salesforce org connected. Hardcoding a single `connection_id` works in local dev but breaks in production where multiple customer orgs are connected.
 
 **Why it happens:**
-The current `migrations/env.py` calls `config.get_main_option("sqlalchemy.url")` directly. This works in local development where the fallback is correct. The ENV override pattern is not enforced, so any environment where `alembic.ini` is not edited will silently use the wrong database.
+Developers build the Nango client against a single known connection for local testing. The `connection_id` is treated as a static configuration value. When the asset is eventually run for a different customer org, the wrong `connection_id` is sent and Nango returns 401. The asset fails, but the error message points to an auth failure rather than a misconfigured header.
 
 **How to avoid:**
-Update `migrations/env.py` to read `DATABASE_URL` from the environment and set it before Alembic uses the URL:
+Make `connection_id` a Dagster asset parameter or resource configuration — never a hardcoded string. The Nango proxy client resource should accept `connection_id` as a required configuration parameter sourced from environment variables or run config. For the v0.3 milestone (single org), use `EnvVar("NANGO_CONNECTION_ID")` as the source. Never embed a literal connection ID in asset code.
+
+Build a thin `NangoProxyClient` resource class that validates all three required headers are present at instantiation time, raising a clear `ConfigurationError` if any are missing — before the first request is attempted.
+
+**Warning signs:**
+- `connection_id` appears as a string literal in asset code rather than being read from environment or config
+- Nango returns HTTP 400 or 401 but the error body does not mention Salesforce — it's a Nango-layer rejection
+- The Nango client is constructed outside a Dagster resource (e.g., at module import time) meaning headers are resolved at load time, not at run time
+- No test exists that validates the client raises a clear error when `NANGO_CONNECTION_ID` is missing
+
+**Phase to address:**
+Nango proxy client phase. The resource must be constructed with all headers validated before any Salesforce asset is written.
+
+---
+
+### Pitfall 3: Salesforce SOQL OFFSET Limit of 2000 Silently Truncates Full Refresh
+
+**What goes wrong:**
+SOQL does not support `OFFSET` values greater than 2000. A naive full-refresh implementation that uses `OFFSET` to paginate will silently stop at 2000 records — it doesn't raise an error, it simply returns an empty result set as if there are no more records. An Opportunity pipeline for a company with 5,000 closed deals will ingest only the first 2,000 on every full refresh. The data looks complete because no error is raised.
+
+**Why it happens:**
+Developers familiar with SQL databases assume offset-based pagination is the correct approach. The Salesforce REST API's `query` endpoint returns a `nextRecordsUrl` field in the response body when more records exist. This link-based pagination mechanism is the correct approach and bypasses the OFFSET limit entirely. The existing Nango TypeScript sync in `salesforce/utils.ts` already implements this correctly using `link_path_in_response_body: 'nextRecordsUrl'` — but re-implementing the Python client from scratch without this pattern reintroduces the bug.
+
+**How to avoid:**
+The Python Nango proxy client must implement link-based pagination following the `nextRecordsUrl` field. After the initial query response, check for the presence of `nextRecordsUrl` in the JSON body. If present, issue a subsequent request to that URL (relative to the Salesforce instance base URL) until no `nextRecordsUrl` is returned. Never use `OFFSET` in SOQL. The pattern:
 
 ```python
-import os
-url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
-config.set_main_option("sqlalchemy.url", url)
+url = query_endpoint(soql)
+while url:
+    response = nango_client.get(url)
+    records.extend(response["records"])
+    url = response.get("nextRecordsUrl")  # None when done
 ```
 
-Keep `alembic.ini`'s value as the local development fallback only. Add a CI job that spins up a PostgreSQL container and runs `alembic upgrade head` against it as a required check before merging migrations.
+Add a test using a mock that returns `nextRecordsUrl` on the first call and verifies the second call is made to the correct URL.
 
 **Warning signs:**
-- `alembic upgrade head` finishes instantly with no schema changes visible in PostgreSQL
-- No `alembic_version` row in the PostgreSQL database after running the command
-- Production service raises `sqlalchemy.exc.OperationalError: table data_records does not exist` on first request
-- `alembic.ini` contains the actual production database URL (means someone edited the file instead of using ENV)
+- SOQL queries contain `OFFSET` keyword
+- Full refresh returns exactly 2000 records — not a round number by coincidence
+- No pagination loop in the Salesforce client code; single request per asset
+- Lack of a test that verifies pagination across multiple pages
 
 **Phase to address:**
-Migration compatibility phase, before any PostgreSQL deployment. The phase is not complete until a CI job runs migrations against a live PostgreSQL container.
+Nango proxy client phase, before any asset implementation. Pagination must be validated as a unit before asset logic is written on top of it.
 
 ---
 
-### Pitfall 3: SQL Injection via Identifier Parameterization in QueryData
+### Pitfall 4: Full Refresh Without Truncate Causes Duplicate Records on Re-Materialization
 
 **What goes wrong:**
-`QueryData` accepts user-supplied filter inputs. SQLAlchemy's `text()` with bound parameters (`:param`) safely handles values. However, SQL identifiers — table names, column names, ORDER BY fields — cannot be parameterized. If any identifier portion is derived from user input via string interpolation (`f"SELECT * FROM {model_name} WHERE ..."`), the query is directly injectable regardless of how the values are bound. The `data_records` table stores JSON blobs; a query interface that allows filtering on JSON paths or column references is particularly exposed.
+A full refresh asset that inserts all Salesforce records on every materialization will accumulate duplicates in PostgreSQL. Materializing the Opportunity asset three times triples the row count. Because the existing `data_records` table uses `event_id` (derived from payload hash) for idempotency, re-running the same payload is handled — but only if the hashing is deterministic and the full payload content is identical on every sync. Any field in the payload that changes between syncs (e.g., `LastModifiedDate`, `SystemModstamp`) produces a different hash, a different `event_id`, and a new row.
 
 **Why it happens:**
-Developers correctly apply bound parameters for values and assume this protects the whole query. The false assumption: "I'm using SQLAlchemy `text()` so I'm safe." This is true only for value placeholders. Table names and column names are not parameterizable in SQL — the database treats them as structure, not data.
+Full refresh is intended to replace data, not append. The natural implementation inserts all records and relies on deduplication to handle re-runs. But the deduplication mechanism (payload hash) is content-sensitive. Salesforce records change over time — any modification produces a new hash, defeating deduplication.
 
 **How to avoid:**
-Define an allowlist of permitted filter fields in the kernel's `QueryData` command or handler (e.g., `model_name`, `connection_id`, `created_at`). Validate all identifier portions against this allowlist in the adapter before constructing the query string. Values go through bound parameters; identifiers go through the allowlist with an explicit rejection if not matched.
-
-Prefer ORM-level `select()` with explicit column references over `text()` for the query adapter. If raw SQL is necessary, build the query structure with pre-validated identifiers and only pass values as bound params.
-
-The query HTTP endpoint must accept structured parameters (model, filters, limit) — never a raw SQL string from the client.
-
-**Warning signs:**
-- The `query_sql` or equivalent field accepts arbitrary strings from the HTTP request body
-- No allowlist validation exists in the `QueryData` command, handler, or adapter
-- Test suite does not include an injection attempt test (e.g., `; DROP TABLE data_records --` as a filter value)
-- `session.execute(text(f"... {user_input} ..."))` appears anywhere in the query adapter
-
-**Phase to address:**
-QueryData command and query HTTP endpoint phase. Injection test cases are acceptance criteria, not a deferred security review item.
-
----
-
-### Pitfall 4: Connection Pool Misconfiguration Causes Production Request Timeouts
-
-**What goes wrong:**
-The current `app.py` creates an `AsyncEngine` with no pool parameters, relying on SQLAlchemy defaults (`pool_size=5`, `max_overflow=10`). For aiosqlite, pooling is irrelevant because SQLite serializes writes. For PostgreSQL under concurrent load, the default pool is too small. With multiple Uvicorn workers, each creates its own engine with its own pool. At 4 workers: `4 × (5 + 10) = 60` maximum connections at peak. PostgreSQL's default `max_connections` is 100. Without PgBouncer the connection count grows with workers. With PgBouncer in transaction mode, asyncpg's prepared-statement cache causes intermittent `InvalidCachedStatementError`.
-
-**Why it happens:**
-Pool configuration that works for development SQLite is carried unchanged to the PostgreSQL engine. The failure only surfaces under concurrent load in production or during load tests, not in unit tests.
-
-**How to avoid:**
-When creating the PostgreSQL engine, set explicit pool parameters:
-- `pool_size=5`, `max_overflow=10` per worker as a safe starting point
-- `pool_recycle=300` to match PostgreSQL's `idle_in_transaction_session_timeout`
-- `pool_pre_ping=True` to detect stale connections before use
-- If PgBouncer is in the deployment stack: `connect_args={"statement_cache_size": 0}` to disable asyncpg prepared-statement caching
-
-Expose `db_pool_size` and `db_max_overflow` as ENV-configurable parameters in `Settings` so pool sizing can be tuned per environment without code changes.
-
-**Warning signs:**
-- `sqlalchemy.exc.TimeoutError: QueuePool limit of size 5 overflow 10 reached` under concurrent requests
-- Intermittent `asyncpg.exceptions.InvalidCachedStatementError` — PgBouncer in transaction mode with prepared statements
-- `OperationalError: server closed the connection unexpectedly` after idle periods — missing `pool_recycle`
-- `pool_size` is not present in the `Settings` class or the engine creation call
-
-**Phase to address:**
-PostgreSQL adapter phase. Load test with at least 20 concurrent requests before marking the phase done.
-
----
-
-### Pitfall 5: Hardcoded Repository Import Bypasses the Configurable Backend
-
-**What goes wrong:**
-`dependencies.py` currently hardcodes `from src.adapters.driven.sqlite.repository import SQLiteDataRepository` and always instantiates `SQLiteDataRepository`. When the PostgreSQL adapter is added but the dependency wiring is not updated, the service always uses SQLite regardless of `DATABASE_URL`. The PostgreSQL adapter exists but is never invoked in production. This failure mode is silent — the service starts, responds to requests, and appears healthy.
-
-**Why it happens:**
-In v1 there was only one adapter so direct instantiation was appropriate. Adding a second adapter without a factory creates an implicit coupling: the driving adapter (FastAPI) selects the driven adapter (repository) inline, which is the opposite of the hexagonal intent. The "configurable backend" requirement reads like a configuration concern but is actually a composition-root concern.
-
-**How to avoid:**
-Introduce a repository factory function in the composition root (`app.py` lifespan or a dedicated factory module). The factory reads `settings.database_url` (or a `settings.storage_backend` enum) and returns the appropriate concrete repository. The factory is the only place that imports both concrete adapters.
+For full refresh assets, use a TRUNCATE-INSERT pattern within a single transaction: delete all rows for the given `model_name` and `connection_id`, then insert the fresh batch. This is idempotent regardless of whether individual records changed. Implement it as:
 
 ```python
-def make_repository(session_factory, database_url: str) -> DataRepository:
-    if database_url.startswith("postgresql"):
-        return PostgreSQLDataRepository(session_factory)
-    return SQLiteDataRepository(session_factory)
+# Inside a single transaction
+DELETE FROM data_records WHERE model_name = :model AND connection_id = :conn
+INSERT INTO data_records (...) VALUES (...)
 ```
 
-Test the factory: assert that `DATABASE_URL=sqlite+aiosqlite://...` yields `SQLiteDataRepository` and `DATABASE_URL=postgresql+asyncpg://...` yields `PostgreSQLDataRepository`.
+Keep this within the existing hexagonal architecture: the `AddData` kernel command handles single-record inserts for the webhook path. The Dagster pipeline should call a new `BulkRefreshData` command (or use the repository directly if the Dagster adapter is kept separate from the webhook kernel path) that wraps the TRUNCATE-INSERT.
 
 **Warning signs:**
-- `SQLiteDataRepository` is still the only import in `dependencies.py` after the PostgreSQL adapter is merged
-- There is no factory function or conditional instantiation at the composition root
-- The `/health` endpoint does not report which storage backend is active
+- Row count in `data_records` grows on every asset materialization rather than staying stable
+- No `DELETE` or `TRUNCATE` statement exists in the Dagster pipeline code before the insert loop
+- The pipeline re-uses `AddData` command in a loop — this uses the ON CONFLICT DO NOTHING path, which does not handle content-changed records
 
 **Phase to address:**
-Configurable backend phase. The factory test must run as part of the phase acceptance criteria.
+Full refresh asset implementation phase, for all four Salesforce assets simultaneously. The acceptance criterion is: running the same asset twice yields the same row count both times.
 
 ---
 
-### Pitfall 6: batch_alter_table Migrations Are SQLite-Specific — Future Migrations May Break PostgreSQL
+### Pitfall 5: Dagster Resource Configuration Differs Between Local Dev and Dagster Cloud
 
 **What goes wrong:**
-`002_rename_columns.py` uses `op.batch_alter_table()` — the SQLite-specific workaround for `ALTER TABLE` operations that SQLite does not support natively. On PostgreSQL, Alembic generates standard `ALTER COLUMN` inside the batch block, which works correctly. The risk runs in the other direction: future migrations written with PostgreSQL-specific syntax (`CREATE INDEX CONCURRENTLY`, enum types, `GENERATED ALWAYS AS IDENTITY`, `JSONB` operators) will fail on SQLite. The CI test environment that runs migrations against SQLite in-memory will not catch PostgreSQL-specific failures — they only appear in production.
+In local dev, Dagster reads environment variables from the shell (`.env` file, `export` commands). In Dagster Cloud (Serverless or Hybrid), environment variables must be configured through the Dagster+ UI or `dagster_cloud.yaml`. A configuration that works locally because `NANGO_SECRET_KEY` is in `.env` silently fails in production because the variable was never set in the cloud deployment. The asset run shows no error at scheduling time — only at execution time does the resource initialization fail when it cannot find the environment variable.
+
+Additionally, the `dagster.yaml` used for local instance configuration is not used in Dagster Cloud — the cloud uses its own internal storage. Developers who configure local PostgreSQL storage in `dagster.yaml` and assume this carries to the cloud will find that it does not.
 
 **Why it happens:**
-The "develop on SQLite, deploy to PostgreSQL" discipline requires testing migrations against both dialects. This discipline is easy to skip under time pressure. Developers write a migration, run it locally against SQLite, see it pass, and merge it. The PostgreSQL-specific syntax fails only when the migration runs against the production database.
+Dagster OSS and Dagster Cloud have different configuration mechanisms for the same concern (instance config, environment variables). The `dagster.yaml` file configures local/OSS instances; `dagster_cloud.yaml` configures cloud code locations. Environment variables set locally are not automatically available in cloud deployments. This separation is intentional but underdocumented for teams migrating from local to cloud.
 
 **How to avoid:**
-- Always use `op.batch_alter_table()` for schema changes that must work on both dialects (column renames, drops, type changes that SQLite needs recreated)
-- Avoid PostgreSQL-specific DDL syntax in standard migrations; isolate it behind a dialect check if unavoidable
-- Add a CI job that runs `alembic upgrade head` and `alembic downgrade base` against a PostgreSQL Docker service as a required check for every migration PR
-- Test both `upgrade()` and `downgrade()` against both dialects before merging
+From the start, structure all resource configurations using `EnvVar("...")` — not `os.getenv(...)` or hardcoded values. Dagster's `EnvVar` integration resolves correctly in both OSS and Dagster Cloud environments. Document every required environment variable in a `README` or `.env.example` alongside the Dagster project. Configure all variables in Dagster+ UI or agent config before the first cloud deployment. Use `DAGSTER_IS_DEV_CLI` (set to `"1"` by `dagster dev`) to enable dev-mode behaviors without separate config files.
 
 **Warning signs:**
-- Migration files use `op.execute("ALTER TABLE ...")` directly without a batch context
-- No PostgreSQL Docker service in CI for migration testing
-- `downgrade()` is not implemented (`pass` body)
-- Migrations are only validated with `sqlite+aiosqlite:///:memory:`
+- `os.getenv("NANGO_SECRET_KEY")` appears in resource code instead of `EnvVar("NANGO_SECRET_KEY")`
+- No `.env.example` file listing the required environment variables for the Dagster pipeline
+- Cloud deployment fails with `KeyError` or `None`-type errors in resource initialization
+- `dagster.yaml` contains the only place where PostgreSQL credentials are configured (not in the cloud environment variables)
 
 **Phase to address:**
-Migration compatibility phase. Acceptance criteria: all three existing migrations (`001`, `002`, and any new v2.0 migration) pass `alembic upgrade head` and `alembic downgrade base` against a PostgreSQL container in CI.
+Dagster local dev setup phase. Every resource parameter that varies by environment must be `EnvVar`-backed before the first asset is written.
 
 ---
 
-### Pitfall 7: Unbound Query Result Size — DoS via Expensive Query
+### Pitfall 6: Dagster Port Conflicts With Existing FastAPI Service
 
 **What goes wrong:**
-The `QueryData` command, if it does not enforce a result cap, allows any caller to issue a query that returns the entire `data_records` table. A single request matching all rows (e.g., filtering only on `model_name`) returns potentially millions of JSON blobs in one HTTP response. The FastAPI worker processing this response exhausts memory and crashes, or takes long enough to starve the connection pool.
+`dagster dev` starts a Dagster webserver on port 3000 by default. If the existing FastAPI service is also running locally on port 3000 (or if any other process is using that port), `dagster dev` silently fails to bind or starts but is unreachable. Additionally, the Dagster gRPC code location server starts on an ephemeral or configured port. If the project `workspace.yaml` explicitly specifies a port for the code location that conflicts with another service, the code location shows as unreachable in the Dagster UI with an unhelpful `gRPC UNAVAILABLE` error.
+
+Mounting the Dagster UI inside the existing FastAPI application (`app.mount("/dagster", default_app())`) is not supported — there is a known GitHub issue (dagster-io/dagster#12797) where assets fail to load and static routes break when Dagster is mounted at a non-root path. The correct deployment model is to run Dagster and FastAPI as separate processes on different ports.
 
 **Why it happens:**
-The query interface is built for developer convenience and tested with small datasets. The default behavior of `SELECT ... WHERE model_name = :m` has no implicit limit. The problem is invisible in development but catastrophic in production once data accumulates.
+Developers assume they can run everything in one process for simplicity. The Dagster UI is a full React application with its own routing, static asset serving, and GraphQL endpoint — it expects to be served at the root path. Mounting at a sub-path breaks the frontend routing.
 
 **How to avoid:**
-Enforce a hard `LIMIT` in the query adapter — unconditionally, not only when the client requests it. Make the default limit and the maximum limit ENV-configurable:
-
-```
-DEFAULT_QUERY_LIMIT=100
-MAX_QUERY_LIMIT=1000
-```
-
-The query HTTP endpoint returns a 400 if the client requests a limit above the configured maximum. The query adapter appends `LIMIT :limit` to every query regardless of client input.
+Run Dagster and FastAPI as completely separate processes. In `docker-compose.yml`, add dedicated services for the Dagster webserver (port 3001 or another free port) and the Dagster daemon. Do not attempt to mount Dagster inside the FastAPI application. Use `dagster dev --port 3001` if the default port is occupied. In the project `workspace.yaml`, do not specify explicit ports for the code location unless necessary — let Dagster assign ephemeral ports automatically.
 
 **Warning signs:**
-- The query adapter has no `LIMIT` clause
-- `MAX_QUERY_LIMIT` is not in `Settings`
-- Load testing the query endpoint with `model_name=hubspot_contact` on a populated database shows response sizes > 10MB
+- `address already in use` error when starting `dagster dev`
+- `gRPC Error code: UNAVAILABLE` in Dagster UI for the code location immediately after startup
+- Attempt to use `app.mount("/dagster", ...)` in `app.py`
+- The Dagster webserver port is hardcoded to 3000, the same as the FastAPI dev server
 
 **Phase to address:**
-QueryData command and query endpoint phase. The limit enforcement is a hard requirement, not an optimization.
+Dagster local dev setup phase. Verify port assignment and separate process model before asset authoring.
+
+---
+
+### Pitfall 7: Salesforce API Rate Limit Exhaustion During Full Refresh
+
+**What goes wrong:**
+Salesforce REST API rate limits are per-org and per-day: typically 100,000 API requests per 24-hour period for most editions. A full refresh of four objects (Opportunity, OpportunityHistory, Task, Event) where each object has thousands of records and requires multiple paginated API calls can consume a substantial portion of that daily quota. Running the pipeline on a schedule (e.g., hourly) amplifies the consumption: 24 runs/day × 4 objects × N pages per object. If the org limit is reached, subsequent API calls return HTTP 403 with `REQUEST_LIMIT_EXCEEDED`. The pipeline fails but the error message from Salesforce is clear — the danger is scheduling too aggressively before measuring actual consumption.
+
+**Why it happens:**
+Full refresh is inherently expensive compared to incremental. Without measuring actual API call consumption for a given org's data volume, teams schedule based on data freshness requirements without knowing the cost. The pipeline is built first, scheduling is configured later, and the rate limit is only discovered in production.
+
+**How to avoid:**
+During development, count the actual number of API calls consumed for a single full refresh across all four objects. Log the count. Set the schedule frequency only after confirming the daily budget allows for the desired runs with sufficient headroom (aim for < 50% of the daily limit). Use the Nango proxy's built-in retry capability (`Retry-On: 403,429` header) with exponential backoff to handle transient throttling. Add a Dagster alert (asset check or sensor) that detects `REQUEST_LIMIT_EXCEEDED` responses and pauses the schedule automatically.
+
+**Warning signs:**
+- No logging of the number of API calls made per pipeline run
+- Schedule frequency is set before measuring actual API call consumption
+- Nango proxy requests have no retry or backoff configuration
+- HTTP 403 from Salesforce with body containing `REQUEST_LIMIT_EXCEEDED`
+
+**Phase to address:**
+Salesforce asset implementation phase. API call counting and schedule frequency determination must happen before the pipeline is put on a production schedule.
+
+---
+
+### Pitfall 8: Dagster Internal Database Instance Migrate Required After Version Upgrades
+
+**What goes wrong:**
+Dagster frequently changes its internal database schema between minor releases. After upgrading the `dagster` package (e.g., from 1.8 to 1.9), the existing Dagster instance — whether SQLite or PostgreSQL — may be on a stale schema revision. The upgrade does not automatically migrate the instance; the user must run `dagster instance migrate` manually. If this step is skipped, Dagster silently misbehaves: runs may not appear in the UI, schedule state is lost, or the daemon fails to start. The failure mode depends on what schema changes were made — it is not always a hard crash.
+
+**Why it happens:**
+`pip install --upgrade dagster` updates the code but not the instance schema. The migration step is documented but easy to miss, especially when dependency upgrades happen as part of a broader `uv lock --upgrade` or `pip install -U` operation.
+
+**How to avoid:**
+After every Dagster version upgrade (including patch versions), run `dagster instance migrate` against the configured `$DAGSTER_HOME`. Add this as a step in the project's upgrade runbook. If using Docker, add `dagster instance migrate` as part of the container startup command (it is idempotent — safe to run even if no migration is needed).
+
+**Warning signs:**
+- `dagster dev` starts but no runs appear in the UI after the first materialization
+- `dagster schedule list` shows schedules as stopped even though they were previously running
+- Error messages mentioning schema revision mismatch or missing columns in Dagster's internal tables
+- The Dagster version in `pyproject.toml` changed but `dagster instance migrate` was not run
+
+**Phase to address:**
+Dagster local dev setup phase. Document the upgrade procedure. The setup phase is not complete until the migration step is part of the documented runbook.
 
 ---
 
@@ -205,13 +228,13 @@ QueryData command and query endpoint phase. The limit enforcement is a hard requ
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `alembic.ini` URL without ENV override | Zero config for local dev | Silent migration to wrong DB in production | Never — fix before first PostgreSQL deployment |
-| Hardcoded `SQLiteDataRepository` in `dependencies.py` | Fewer files to change | PostgreSQL adapter bypassed in production | Never once the second adapter exists |
-| f-string identifier interpolation in `text()` queries | Rapid query prototyping | SQL injection vulnerability in a public endpoint | Never in any externally reachable interface |
-| Default pool parameters for PostgreSQL engine | Zero config change needed | Request timeouts under concurrent production load | MVP with single worker and < 5 concurrent requests |
-| No `downgrade()` implementation in migrations | Faster migration authoring | Cannot roll back a bad production migration | Never in a service with live production data |
-| No result cap on query endpoint | Simpler initial implementation | DoS via expensive query, worker OOM | Never once real data accumulates |
-| PgBouncer in transaction mode without disabling prepared statements | PgBouncer scales connections | Intermittent `InvalidCachedStatementError` in asyncpg | Never — always set `statement_cache_size=0` with transaction-mode PgBouncer |
+| SQLite for Dagster internal storage | Zero config, works out of box | Locks and corruption under concurrent asset runs | Never — migrate to PostgreSQL from the start |
+| Hardcoded `connection_id` in Nango client | Simpler local dev | Breaks for every customer org in production | Never — always source from config/env |
+| Full refresh without TRUNCATE-INSERT | Simpler insert logic | Duplicate records accumulate over time | Never once real production data exists |
+| `os.getenv()` instead of `EnvVar()` for Dagster resources | Familiar Python pattern | Environment variables not visible in Dagster UI, fails silently in cloud | Never in Dagster resource code |
+| Offset-based SOQL pagination | Familiar SQL pagination | Silently truncates at 2000 records | Never — Salesforce does not support OFFSET > 2000 |
+| Mounting Dagster inside FastAPI | Single process for dev | Assets fail to load, static routes break | Never — run as separate processes |
+| Skipping `dagster instance migrate` after upgrades | Faster upgrade process | Silent misbehavior — lost run history, broken schedules | Never in any persistent environment |
 
 ---
 
@@ -219,13 +242,14 @@ QueryData command and query endpoint phase. The limit enforcement is a hard requ
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| asyncpg + PgBouncer | Transaction-mode pooler breaks asyncpg prepared-statement cache | Pass `connect_args={"statement_cache_size": 0}` to disable caching |
-| Alembic + PostgreSQL | `alembic.ini` URL used instead of `DATABASE_URL` env var | Override URL in `env.py` from `os.environ.get("DATABASE_URL")` before running |
-| SQLAlchemy `text()` + user input identifiers | Interpolating table/column names from user input into the SQL string | Values: bound params (`:param`). Identifiers: validated allowlist only |
-| SQLAlchemy dialect imports | Copying `sqlite_insert` into the PostgreSQL adapter | Each adapter uses its own dialect import — no sharing of insert construction |
-| FastAPI lifespan + async engine | `await engine.dispose()` omitted on shutdown | Always dispose in the lifespan exit path to prevent connection leak warnings |
-| PostgreSQL `JSON` column storage | SQLite stores JSON as text; PostgreSQL stores as binary (JSONB when cast) | Use SQLAlchemy `JSON` type, not `JSONB`, if cross-dialect compatibility is needed |
-| `pool_pre_ping` omitted | Stale connections after idle periods cause `OperationalError` on first use | Set `pool_pre_ping=True` on the PostgreSQL engine always |
+| Nango proxy | Forgetting `Provider-Config-Key` or `Connection-Id` header | Build a `NangoProxyClient` resource that enforces all three required headers at construction time |
+| Nango proxy | Treating the proxy as a pass-through URL instead of a header-authenticated gateway | The proxy rewrites `Authorization` for the downstream API — do not send Salesforce credentials directly |
+| Nango proxy | Using the Nango Node SDK patterns in Python | Nango has no official Python SDK; use `httpx` with custom headers matching the proxy API spec |
+| Salesforce REST API | Using OFFSET pagination | Follow `nextRecordsUrl` from the response body; OFFSET is capped at 2000 |
+| Salesforce REST API | Constructing the instance URL from config | The Nango proxy provides the correct base URL automatically — use relative paths (`/services/data/v60.0/query`) |
+| Dagster + PostgreSQL | Using the app's PostgreSQL database for Dagster internal storage | Use a separate database or schema for Dagster internal tables to prevent Dagster schema management from conflicting with Alembic migrations |
+| Dagster + FastAPI | Trying to mount Dagster UI inside FastAPI | Run as separate processes on different ports; do not use `app.mount()` |
+| Dagster resources | Using `os.getenv()` in resource bodies | Use `dagster.EnvVar("VAR_NAME")` so Dagster can resolve and display config in the UI |
 
 ---
 
@@ -233,11 +257,11 @@ QueryData command and query endpoint phase. The limit enforcement is a hard requ
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Default `pool_size=5` per Uvicorn worker | `QueuePool limit reached` errors under concurrent requests | Set `pool_size`/`max_overflow` as ENV-configurable; tune per worker count | > 5 concurrent requests per worker |
-| Missing `pool_pre_ping=True` | `OperationalError: connection closed` on first request after idle | Add `pool_pre_ping=True` to `create_async_engine()` | After ~5 minutes idle with default PostgreSQL idle timeout |
-| Missing `pool_recycle=300` | Stale connections after PostgreSQL reclaims idle sessions | Set `pool_recycle=300` (match `idle_in_transaction_session_timeout`) | When idle > 300 seconds in production |
-| Unbound query result size | Worker OOM or slow response on queries matching large row counts | Enforce unconditional `LIMIT` in the query adapter; ENV-configurable max | > 10k rows matching a query in production |
-| Full table scan on `data_records` without index hit | Slow queries on large datasets | Existing indexes on `model_name` and `connection_id` cover primary filter paths — verify they survive migrations | > 100k rows in `data_records` |
+| Full refresh without batching inserts | Single-transaction insert of 10k+ records causes PostgreSQL lock timeout | Batch inserts in chunks of 500-1000 records within the TRUNCATE-INSERT transaction | > 5,000 records per object |
+| Loading entire Salesforce response into memory before inserting | OOM in the Dagster process for large orgs | Stream pages from Salesforce and insert each page before fetching the next | > 50,000 records per object |
+| No Dagster run concurrency limit | Four assets running simultaneously each open a database connection; connection pool exhausted | Set `max_concurrent_runs` in `dagster.yaml`; configure assets to share a resource pool | > 3 concurrent asset materializations |
+| Salesforce full refresh on a per-hour schedule | API call quota exhausted by midday | Measure calls per run; start with daily or 6-hour schedules; increase only after measuring | When daily quota < (runs/day × calls/run) |
+| Dagster event log bloat | Dagster's internal storage grows unboundedly with each run; queries slow | Configure event log retention via `dagster.yaml`; use PostgreSQL storage with cleanup schedule | After hundreds of pipeline runs |
 
 ---
 
@@ -245,37 +269,39 @@ QueryData command and query endpoint phase. The limit enforcement is a hard requ
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Identifier interpolation in `text()` | SQL injection allowing data exfiltration or deletion | Allowlist all identifier inputs; reject anything not on the list |
-| Accepting raw SQL strings from HTTP clients | Full SQL execution as the service DB user | Accept structured parameters only (model, filters, limit) — never a raw SQL string |
-| Database user with DDL permissions | SQL injection can drop or alter tables | Create a dedicated PostgreSQL role with only `SELECT`, `INSERT` on `data_records` and `audit_log` |
-| Connection string with credentials in `alembic.ini` | Credentials committed to the repository | `alembic.ini` must never contain real credentials; always load from environment |
-| No result size cap on query endpoint | DoS via query returning millions of rows | Enforce a hard `LIMIT` unconditionally in the query adapter |
+| `NANGO_SECRET_KEY` hardcoded in Dagster resource | Credential exposed in source code and Dagster UI | Use `EnvVar("NANGO_SECRET_KEY")` exclusively; never commit the value |
+| `connection_id` hardcoded per customer in pipeline code | Different customers' data can be inadvertently swapped | Source `connection_id` from run config or environment; never hardcode per-customer identifiers |
+| Dagster webserver accessible without auth on public network | Anyone can trigger pipeline runs | Use Dagster+'s built-in auth or restrict the Dagster port to private network / VPN only |
+| PostgreSQL credentials visible in Dagster `dagster.yaml` | Credentials committed to source control | Use `{ env: VAR_NAME }` substitution syntax in `dagster.yaml` for all credential values |
+| No validation of Salesforce record count against expected range | Truncated full refresh (e.g., API error after 1000 records) replaces good data with partial data | Validate record count is above a minimum threshold before committing the TRUNCATE-INSERT transaction |
 
 ---
 
 ## UX Pitfalls
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Query endpoint returns internal ORM fields | Consumers see `event_id`, internal adapter internals | Response schema exposes only `id`, `model_name`, `connection_id`, `data`, `created_at` |
-| Query validation errors surface as 500 | Callers cannot distinguish invalid filter from server error | Return 400 with `{"error": "invalid_filter", "field": "model_name"}` for input failures |
-| Active backend not visible at runtime | Operators cannot confirm which storage backend is in use | Include `storage_backend` (e.g., `"sqlite"` or `"postgresql"`) in the `/health` response body |
-| Query error messages expose SQL internals | Security risk and poor UX | Catch `sqlalchemy.exc` in the adapter and return a generic structured error to the HTTP layer |
+This milestone is a backend pipeline with no end-user UI. Relevant "UX" here means developer/operator experience.
+
+| Pitfall | Operator Impact | Better Approach |
+|---------|----------------|-----------------|
+| No asset metadata on materialization | Operators cannot see how many records were synced per run | Use `dagster.Output(value=..., metadata={"record_count": n})` to log counts to the Dagster UI |
+| Dagster schedules start in RUNNING state locally | Local dev triggers production-frequency jobs accidentally | Check `os.getenv("DAGSTER_IS_DEV_CLI") == "1"` and set schedules to stopped in dev; running in production |
+| Asset failures show generic Python tracebacks | Operator cannot distinguish Salesforce auth failure from data error | Catch `NangoAuthError`, `SalesforceRateLimitError`, etc. and re-raise with structured context |
+| No asset checks for data completeness | Pipeline shows green even if Salesforce returned 0 records (silent auth failure) | Add an `@asset_check` that fails if `record_count == 0` for any of the four objects |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **PostgreSQL adapter idempotency:** Duplicate `event_id` inserts tested against a real PostgreSQL connection — `rowcount == 0` without exception. Not only SQLite.
-- [ ] **Backend switching:** Setting `DATABASE_URL=postgresql+asyncpg://...` actually routes to `PostgreSQLDataRepository`. Verified with a factory unit test.
-- [ ] **Alembic on PostgreSQL:** `alembic upgrade head` has run successfully against a PostgreSQL container in CI, not only validated locally against SQLite.
-- [ ] **QueryData injection prevention:** A test exists that submits an injection-attempt input as a filter value and confirms it is safely rejected or parameterized.
-- [ ] **Engine disposal:** `await engine.dispose()` is called in the FastAPI lifespan exit path for the PostgreSQL engine.
-- [ ] **Query result cap:** Every query through the query adapter includes an unconditional `LIMIT`. Cannot be omitted by the client to return unlimited rows.
-- [ ] **Health endpoint reports active backend:** `/health` response body includes `storage_backend` so operators can confirm configuration at runtime.
-- [ ] **Pool parameters are ENV-configurable:** `pool_size` and `max_overflow` read from environment variables — not hardcoded — so production can be tuned without a code deploy.
-- [ ] **Migration downgrade works:** `alembic downgrade base` runs without error against both SQLite and PostgreSQL.
-- [ ] **No credentials in alembic.ini:** The `sqlalchemy.url` line in `alembic.ini` contains only the local dev fallback — no production credentials.
+- [ ] **Dagster storage:** `dagster.yaml` configures PostgreSQL storage — not SQLite. Verified by materializing all four assets simultaneously with no lock errors.
+- [ ] **Nango headers:** All three required Nango proxy headers (`Authorization`, `Connection-Id`, `Provider-Config-Key`) are present on every request. No hardcoded `connection_id` literals.
+- [ ] **Full pagination:** Pipeline fetches all pages via `nextRecordsUrl` loop. Verified against an org with > 2000 records of at least one object. No `OFFSET` in any SOQL query.
+- [ ] **TRUNCATE-INSERT:** Re-running an asset twice yields the same row count both times. Verified by comparing `COUNT(*)` before and after a second materialization.
+- [ ] **EnvVar usage:** All Dagster resource configurations use `EnvVar(...)` — not `os.getenv(...)`. Confirmed by searching for `os.getenv` in Dagster-specific code files.
+- [ ] **Separate process model:** Dagster and FastAPI run on different ports as separate processes. No `app.mount()` of Dagster in `app.py`.
+- [ ] **Instance migrate step documented:** The project runbook includes `dagster instance migrate` after every `dagster` package upgrade. Present in project documentation.
+- [ ] **Record count metadata:** Every asset materialization logs record count via `Output(metadata={"record_count": n})`. Visible in the Dagster UI materialize history.
+- [ ] **Dev schedule behavior:** Schedules are stopped by default in local dev (`DAGSTER_IS_DEV_CLI=1`) and running in production. Verified by checking `dagster schedule list` in both environments.
+- [ ] **Separate Dagster database:** Dagster internal tables live in a separate PostgreSQL database or schema from `data_records` and `audit_log`. Alembic migrations do not interfere with Dagster's own schema.
 
 ---
 
@@ -283,12 +309,12 @@ QueryData command and query endpoint phase. The limit enforcement is a hard requ
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Migrations ran against SQLite instead of PostgreSQL in production | HIGH | Run `alembic upgrade head` with correct `DATABASE_URL`; if schema already exists, `alembic stamp head` to mark as current; verify with `alembic current` |
-| SQL injection through query interface | HIGH | Disable query endpoint immediately; audit database access logs for exfiltration; patch with allowlist validation before re-enabling |
-| Connection pool exhaustion | MEDIUM | Restart workers to release connections; add `pool_size`/`max_overflow` ENV vars and redeploy; temporarily reduce worker count |
-| Wrong repository instantiated (SQLite in production) | MEDIUM | Set `DATABASE_URL` correctly and restart; verify via `/health` endpoint that `storage_backend` matches expected |
-| Migration fails on PostgreSQL (dialect-specific syntax) | LOW | Rewrite migration using standard SQLAlchemy operations compatible with both dialects; test against both before re-running |
-| Stale connections after idle period | LOW | Add `pool_pre_ping=True` and `pool_recycle=300`; deploy new version; no data loss, only transient errors until deployed |
+| SQLite lock corrupts Dagster event log | MEDIUM | Delete `$DAGSTER_HOME` to reset the local instance; all run history is lost; data in PostgreSQL is unaffected |
+| Duplicate records from missing TRUNCATE-INSERT | MEDIUM | Run `DELETE FROM data_records WHERE model_name = :model AND connection_id = :conn` to clear the table; re-materialize |
+| Wrong `connection_id` synced wrong customer's data | HIGH | Identify which runs used the wrong ID; delete those rows from `data_records`; fix the config; re-materialize |
+| Salesforce API quota exhausted | LOW | Wait for the 24-hour reset; reduce schedule frequency before re-enabling; add quota monitoring |
+| Dagster instance schema out of date after upgrade | LOW | Run `dagster instance migrate`; run history may be incomplete but pipeline execution resumes normally |
+| `nextRecordsUrl` pagination bug silently truncated data | MEDIUM | Identify the last correct full refresh; delete affected rows; fix pagination; re-materialize |
 
 ---
 
@@ -296,44 +322,49 @@ QueryData command and query endpoint phase. The limit enforcement is a hard requ
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Dialect-specific ON CONFLICT (SQLite import in PostgreSQL adapter) | PostgreSQL adapter | Idempotency test passes against PostgreSQL fixture — `rowcount == 0` on duplicate `event_id` |
-| `alembic.ini` hardcoded URL bypasses PostgreSQL deployment | Migration compatibility | CI job: `alembic upgrade head` against PostgreSQL Docker service passes on every migration PR |
-| SQL injection via identifier interpolation in QueryData | QueryData command + endpoint | Injection-attempt test is part of acceptance criteria; no identifier from user input appears unvalidated |
-| Connection pool misconfiguration | PostgreSQL adapter | Load test: 20 concurrent requests complete without `QueuePool limit reached` error |
-| Hardcoded repository bypasses backend switching | Configurable backend | Factory test: `sqlite://` URL → `SQLiteDataRepository`; `postgresql://` URL → `PostgreSQLDataRepository` |
-| batch_alter_table migration incompatible with PostgreSQL | Migration compatibility | CI: all migrations run `upgrade` + `downgrade` against PostgreSQL without error |
-| Unbound query result size | QueryData endpoint | Test: query with no limit returns at most `MAX_QUERY_LIMIT` rows; request above cap returns 400 |
+| Dagster SQLite concurrency locks | Dagster local dev setup | Materialize all four assets simultaneously; zero lock errors in logs |
+| Nango proxy missing headers | Nango proxy client | Unit test validates all three headers present; test for missing header raises `ConfigurationError` |
+| SOQL OFFSET truncation | Nango proxy client (pagination) | Test with mocked `nextRecordsUrl` verifies second page is fetched |
+| Full refresh duplicate records | Salesforce asset implementation | Run same asset twice; COUNT(*) before and after second run is equal |
+| Dev/cloud env var config | Dagster local dev setup | All resources use `EnvVar`; grep for `os.getenv` in Dagster code returns no results |
+| Port conflict with FastAPI | Dagster local dev setup | Both services start simultaneously; no port binding error |
+| Salesforce API rate limits | Salesforce asset implementation | Log API call count per run; schedule frequency set based on measured consumption |
+| Dagster instance migrate | Dagster local dev setup | Upgrade runbook documented; `dagster instance migrate` in Docker startup command |
 
 ---
 
-## Carried-Forward Pitfalls (from v1.0 Research)
+## Carried-Forward Pitfalls (from v0.2.0 Research)
 
-The following pitfalls from the original research remain relevant for this milestone and are preserved for reference:
+The following pitfalls from prior milestones remain relevant for this milestone:
 
-**Kernel purity:** The PostgreSQL adapter must not bleed into the kernel. `src/kernel/` must have zero imports from `sqlalchemy`, `asyncpg`, or any external dependency. The kernel's `DataRepository` Protocol defines the query port; the adapter implements it without the kernel knowing.
+**PostgreSQL connection pool:** The Dagster pipeline shares the PostgreSQL instance with the FastAPI service. Connection pool exhaustion from concurrent Dagster runs can starve FastAPI request processing. Use a separate PostgreSQL database or configure Dagster with its own connection pool budget. See prior PITFALLS.md for connection pool configuration details.
 
-**Transaction boundaries:** Both the SQLite and PostgreSQL adapters manage transactions internally using `async with session.begin()`. The kernel does not control commit/rollback. Introducing a `query()` port method must follow the same pattern — the adapter opens and closes its own session, returning a plain dict or list to the kernel.
+**Transaction boundaries:** The TRUNCATE-INSERT pattern for full refresh must execute in a single atomic transaction. If the insert fails partway through, the TRUNCATE should roll back — leaving the old data intact rather than leaving the table empty. Use `async with conn.begin()` wrapping both the DELETE and INSERT operations.
 
-**Idempotency:** The `ON CONFLICT DO NOTHING` logic implemented in `SQLiteDataRepository` must be replicated in `PostgreSQLDataRepository` using the PostgreSQL dialect's insert construct. Do not remove idempotency in the PostgreSQL adapter assuming "PostgreSQL is more reliable" — webhook retry storms are a transport-level concern, not a database reliability concern.
+**Kernel purity:** If the Dagster pipeline calls into the kernel (e.g., reusing `AddData` command), the kernel must not import Dagster. Dagster is a driving adapter. The kernel must remain free of all external dependencies. Verify `src/kernel/` has no `dagster` imports.
+
+**Alembic migrations:** Any new PostgreSQL tables required by the Dagster pipeline (if adding new tables, not using existing `data_records`) must go through Alembic migrations, not be created ad hoc in the pipeline code. See prior PITFALLS.md for migration pitfall details.
 
 ---
 
 ## Sources
 
-- [SQLAlchemy 2.0 PostgreSQL Dialect — ON CONFLICT documentation](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html?highlight=conflict)
-- [SQLAlchemy 2.0 SQLite Dialect — ON CONFLICT documentation](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html)
-- [Alembic — Running Batch Migrations for SQLite and Other Databases](https://alembic.sqlalchemy.org/en/latest/batch.html)
-- [Alembic — Maintaining same schema for SQLite and PostgreSQL (Discussion)](https://github.com/sqlalchemy/alembic/discussions/1009)
-- [Alembic — Get database URL from env instead of ini (Discussion)](https://github.com/sqlalchemy/alembic/discussions/1043)
-- [asyncpg FAQ — PgBouncer and prepared statements](https://magicstack.github.io/asyncpg/current/faq.html)
-- [SQLAlchemy — Async connection not returned to pool on task cancellation (Issue #8145)](https://github.com/sqlalchemy/sqlalchemy/issues/8145)
-- [How to properly set pool_size and max_overflow in SQLAlchemy for ASGI apps](https://www.pythontutorials.net/blog/how-to-properly-set-pool-size-and-max-overflow-in-sqlalchemy-for-asgi-app/)
-- [QueuePool limit lockup issue — fastapi/full-stack-fastapi-template (Issue #104)](https://github.com/tiangolo/full-stack-fastapi-postgresql/issues/104)
-- [SQLAlchemy raw query SQL injection vulnerability — Sourcery](https://www.sourcery.ai/vulnerabilities/python-sqlalchemy-security-sqlalchemy-execute-raw-query)
-- [Datadog static analysis — disable sqlalchemy text()](https://docs.datadoghq.com/security/code_security/static_analysis/static_analysis_rules/python-flask/disable-sqlalchemy-text/)
-- [Preventing SQL Injection Attacks with Python — Real Python](https://realpython.com/prevent-python-sql-injection/)
-- [Supabase pooling and asyncpg — PgBouncer incompatibility](https://medium.com/@patrickduch93/supabase-pooling-and-asyncpg-dont-mix-here-s-the-real-fix-44f700b05249)
+- [Dagster — SQLite vs PostgreSQL for internal storage (community discussion)](https://github.com/dagster-io/dagster/discussions/8552)
+- [Dagster — Event database is locked (community discussion)](https://discuss.dagster.io/t/16769182)
+- [Dagster — Mounting Dagster App to existing FastAPI App does not work (GitHub Issue #12797)](https://github.com/dagster-io/dagster/issues/12797)
+- [Dagster — Transitioning from development to production](https://docs.dagster.io/guides/operate/dev-to-prod)
+- [Dagster — Using environment variables and secrets](https://docs.dagster.io/guides/operate/configuration/using-environment-variables-and-secrets)
+- [Dagster — workspace.yaml reference](https://docs.dagster.io/deployment/code-locations/workspace-yaml)
+- [Dagster — dagster_cloud.yaml reference](https://docs.dagster.io/deployment/code-locations/dagster-cloud-yaml)
+- [Dagster — Running out of memory with large datasets (discussion #4669)](https://github.com/dagster-io/dagster/discussions/4669)
+- [Dagster — Assets that can be updated incrementally or fully refreshed (issue #13618)](https://github.com/dagster-io/dagster/issues/13618)
+- [Nango proxy — GET requests API reference](https://nango.dev/docs/reference/api/proxy/get)
+- [Nango — Salesforce integration page](https://nango.dev/integrations/all/salesforce)
+- [Salesforce — SOQL and SOSL limits (OFFSET maximum 2000)](https://developer.salesforce.com/docs/atlas.en-us.salesforce_app_limits_cheatsheet.meta/salesforce_app_limits_cheatsheet/salesforce_app_limits_platform_soslsoql.htm)
+- [Salesforce — API request limits and allocations](https://developer.salesforce.com/docs/atlas.en-us.salesforce_app_limits_cheatsheet.meta/salesforce_app_limits_cheatsheet/salesforce_app_limits_platform_api.htm)
+- [Salesforce — Workaround for OFFSET 2000 limit](https://help.salesforce.com/s/articleView?id=000387840&language=en_US&type=1)
+- [Dagster — Data pipelines key challenges (community analysis)](https://sairamkrish.medium.com/dagster-list-of-pain-points-e528ea139777)
 
 ---
-*Pitfalls research for: PostgreSQL adapter, configurable storage backends, SQL query interface on existing hexagonal Python service*
-*Researched: 2026-03-19*
+*Pitfalls research for: Dagster-based Salesforce data pipeline on existing Python FastAPI service with Nango proxy authentication*
+*Researched: 2026-03-20*

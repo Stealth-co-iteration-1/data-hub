@@ -426,3 +426,448 @@ Steps 4 and 5 can be developed in parallel after Step 1 completes.
 ---
 *Architecture research for: data-hub v2.0 — PostgreSQL adapter, configurable backends, QueryData*
 *Researched: 2026-03-19*
+
+---
+---
+
+# Architecture Research — v0.3 Addendum: Dagster Salesforce Pipeline Integration
+
+**Domain:** Dagster pipeline alongside existing Python hexagonal service
+**Researched:** 2026-03-20
+**Confidence:** HIGH
+
+---
+
+## Context: What Already Exists (v0.2.0)
+
+The data-hub service is fully operational with hexagonal architecture, PostgreSQL backend, webhook ingestion, and Salesforce Nango syncs. v0.3 adds a **Dagster-based pull pipeline** — a new process that runs alongside the existing FastAPI service without modifying it.
+
+**Existing structure (inspected directly):**
+
+```
+data-hub/
+├── src/
+│   ├── kernel/               # Pure Python, no external deps
+│   ├── adapters/
+│   │   ├── driven/
+│   │   │   ├── nango/client.py         # NangoClient — async httpx
+│   │   │   ├── postgresql/repository.py # PostgresDataRepository — asyncpg
+│   │   │   └── repository_factory.py   # URL-scheme factory
+│   │   └── driving/fastapi/            # FastAPI app
+│   └── config/settings.py              # Pydantic Settings (DATABASE_URL, NANGO_SECRET_KEY)
+├── nango-integrations/                 # TypeScript Nango syncs (v0.2.0)
+├── pyproject.toml                      # asyncpg, psycopg2-binary already present
+└── docker-compose.yml
+```
+
+**Key existing dependency:** `psycopg2-binary` is already in `pyproject.toml`. Dagster's synchronous PostgreSQL resource can use it immediately without adding a new dependency.
+
+---
+
+## System Overview — v0.3 Target State
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         data-hub repository                             │
+│                                                                         │
+│  ┌──────────────────────────┐     ┌────────────────────────────────┐    │
+│  │     FastAPI Service       │     │      Dagster Pipeline          │    │
+│  │   (existing, unchanged)   │     │   (new — separate process)     │    │
+│  │                          │     │                                │    │
+│  │  POST /webhooks/nango    │     │  dagster/                      │    │
+│  │  POST /query/{model}     │     │  ├── definitions.py            │    │
+│  │  GET  /health            │     │  ├── assets/                   │    │
+│  │  GET  /metrics           │     │  │   ├── opportunity.py        │    │
+│  │                          │     │  │   ├── opp_history.py        │    │
+│  │  src/kernel/             │     │  │   ├── task.py               │    │
+│  │  src/adapters/           │     │  │   └── event.py              │    │
+│  │  src/config/             │     │  └── resources/                │    │
+│  └──────────┬───────────────┘     │      ├── nango.py              │    │
+│             │                     │      └── postgres.py           │    │
+│             │ asyncpg (async)     └────────────┬───────────────────┘    │
+│             │                                  │ psycopg2 (sync)        │
+│  ┌──────────▼──────────────────────────────────▼───────────────────┐    │
+│  │                        PostgreSQL                                 │    │
+│  │        data_records table  |  audit_log table                    │    │
+│  └──────────────────────────────────────────────────────────────────┘    │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  Nango (external)                                                  │  │
+│  │  Webhook push  →  FastAPI /webhooks/nango  (existing path)        │  │
+│  │  Records API   →  Dagster NangoResource    (new pull path)        │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Critical insight:** Dagster runs as a **separate OS process**. It never shares in-memory objects with FastAPI. Both processes connect to the same PostgreSQL database but use different drivers: FastAPI uses `asyncpg` (async), Dagster uses `psycopg2` (sync). This is correct and intentional.
+
+---
+
+## Recommended Project Structure
+
+```
+data-hub/
+├── src/                              # Existing FastAPI service — NO CHANGES
+│   ├── kernel/
+│   ├── adapters/
+│   │   ├── driven/
+│   │   │   ├── nango/client.py       # Reused by NangoResource (safe cross-boundary import)
+│   │   │   └── postgresql/
+│   │   └── driving/fastapi/
+│   └── config/settings.py            # Reused by Dagster resources for default values
+│
+├── dagster/                          # NEW — Dagster pipeline (separate entry point)
+│   ├── __init__.py
+│   ├── definitions.py                # Dagster entry point: Definitions(assets, resources)
+│   ├── assets/
+│   │   ├── __init__.py
+│   │   ├── opportunity.py            # @asset — Opportunity full refresh
+│   │   ├── opp_history.py            # @asset — OpportunityHistory full refresh
+│   │   ├── task.py                   # @asset — Task full refresh
+│   │   └── event.py                  # @asset — Event full refresh
+│   └── resources/
+│       ├── __init__.py
+│       ├── nango.py                  # NangoResource(ConfigurableResource)
+│       └── postgres.py               # PostgresResource(ConfigurableResource)
+│
+├── workspace.yaml                    # NEW — dagster dev entrypoint (local only)
+├── dagster.yaml                      # NEW — Dagster instance config (run storage, etc.)
+├── pyproject.toml                    # ADD dagster, dagster-webserver dependencies
+└── tests/
+    ├── (existing tests — untouched)
+    └── dagster/                      # NEW — Dagster-specific tests
+        ├── test_assets.py
+        └── test_resources.py
+```
+
+### Structure Rationale
+
+- **`dagster/` at project root, not inside `src/`:** Dagster is a separate process and deployment unit, not a FastAPI adapter. Placing it at root makes the process boundary explicit. The existing hexagonal `src/` layout is not violated.
+- **`dagster/resources/` separate from `src/adapters/`:** Dagster resources follow the `ConfigurableResource` contract, not the kernel's `Protocol` contract. They are Dagster-specific adapters, not data-hub kernel adapters. Keeping them separate prevents confusion about which abstraction layer they belong to.
+- **Reuse `src/config/settings.py`:** Safe to import from Dagster resources. `settings.py` depends only on `pydantic-settings` — no kernel, no FastAPI, no asyncpg. Avoids duplicating `NANGO_BASE_URL` and similar defaults.
+- **Reuse `src/adapters/driven/nango/client.py`:** `NangoResource` delegates to the existing `NangoClient` for actual HTTP calls. The resource is a Dagster lifecycle wrapper; the client is the HTTP logic. This avoids reimplementing pagination and auth headers.
+- **`workspace.yaml` at project root:** `dagster dev` looks for `workspace.yaml` in the current working directory. Placing it at root means `dagster dev` can be run from the project root alongside `uvicorn`.
+
+---
+
+## Architectural Patterns
+
+### Pattern 1: ConfigurableResource Wrapping Existing Client
+
+**What:** Dagster `ConfigurableResource` subclasses wrap existing Python clients rather than reimplementing them. The resource manages Dagster lifecycle; the wrapped client handles the actual logic.
+
+**When to use:** When an existing HTTP or infrastructure client has already been built and tested. The `NangoClient` is a complete, tested async HTTP client — wrapping it is preferable to rewriting it.
+
+**Trade-offs:** Thin resource, minimal duplication. The existing client stays independently testable. The resource is just a factory with config.
+
+**Example:**
+```python
+# dagster/resources/nango.py
+import dagster as dg
+from src.adapters.driven.nango.client import NangoClient
+from src.config.settings import settings
+
+class NangoResource(dg.ConfigurableResource):
+    base_url: str = settings.nango_base_url
+    secret_key: str = dg.EnvVar("NANGO_SECRET_KEY")
+    connection_id: str = dg.EnvVar("NANGO_CONNECTION_ID")
+
+    def client(self) -> NangoClient:
+        return NangoClient(base_url=self.base_url, secret_key=self.secret_key)
+```
+
+### Pattern 2: Synchronous psycopg2 Resource for Dagster Assets
+
+**What:** Use synchronous `psycopg2` for Dagster's PostgreSQL resource. Dagster `@asset` functions are synchronous — there is no async context. The existing FastAPI service continues to use `asyncpg` via its own separate connection pool. Both use the same `DATABASE_URL` but different drivers.
+
+**When to use:** All Dagster assets that write to PostgreSQL. `psycopg2-binary` is already in `pyproject.toml`.
+
+**Trade-offs:** Two connection paths to the same database. This is correct — separate OS processes cannot share Python objects or event loops. Attempting to use `asyncpg` from a sync Dagster asset would require `asyncio.run()` wrapping every DB call, which is error-prone and adds overhead.
+
+**Example:**
+```python
+# dagster/resources/postgres.py
+import dagster as dg
+import psycopg2
+from contextlib import contextmanager
+from pydantic import PrivateAttr
+
+class PostgresResource(dg.ConfigurableResource):
+    database_url: str = dg.EnvVar("DATABASE_URL")
+    _conn: object = PrivateAttr()
+
+    @contextmanager
+    def yield_for_execution(self, context):
+        # Strip asyncpg driver suffix for psycopg2 compatibility
+        url = self.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        self._conn = psycopg2.connect(url)
+        try:
+            yield self
+        finally:
+            self._conn.close()
+
+    def execute(self, sql: str, params: tuple = ()) -> list[dict]:
+        with self._conn.cursor() as cur:
+            cur.execute(sql, params)
+            self._conn.commit()
+            return []
+```
+
+### Pattern 3: Full Refresh Asset with Idempotent Upsert
+
+**What:** Each Dagster asset pulls all records from Nango (all pages), then bulk-upserts into `data_records` using `INSERT ... ON CONFLICT (event_id) DO UPDATE SET data = EXCLUDED.data`. This overwrites stale data on re-run, matching the intent of a full refresh.
+
+**When to use:** All four Salesforce model assets in v0.3. Incremental loads are explicitly deferred.
+
+**Trade-offs:** Simple and correct for current data volumes. Re-fetches all records on every run. Acceptable until incremental strategy is needed (tracked as out-of-scope in PROJECT.md).
+
+**Contrast with webhook path:** The webhook `add()` path uses `ON CONFLICT DO NOTHING` — it preserves first-seen data and is append-only. Dagster uses `DO UPDATE` — it intentionally overwrites with the latest Salesforce state. Both use `event_id` as the idempotency key.
+
+### Pattern 4: asyncio.run() for Async Client Calls in Sync Assets
+
+**What:** Call `asyncio.run(client.fetch_all_records(...))` inside a synchronous `@asset` function to bridge the async `NangoClient` into the sync Dagster execution model.
+
+**When to use:** Any Dagster asset that calls the async `NangoClient`. This is the standard Python pattern for calling async code from sync context.
+
+**Trade-offs:** Creates a new event loop per asset invocation. Acceptable for batch pipeline assets that run infrequently. Not suitable for high-frequency ops. Alternative: rewrite `NangoClient.fetch_all_records()` as a sync function using `httpx.Client` (sync) — this is cleaner but requires duplicating the pagination logic.
+
+**Recommended decision:** Use `asyncio.run()` in v0.3 to minimize changes. If performance becomes a concern, add a sync `NangoClient` variant later.
+
+### Pattern 5: Environment-Based Resource Configuration
+
+**What:** `definitions.py` selects the resource configuration based on `DAGSTER_DEPLOYMENT` env var. Use `dg.EnvVar()` for all secrets — never hardcode values.
+
+**When to use:** In `definitions.py` to wire the correct resource implementations per environment, preventing local dev from accidentally writing to production data.
+
+**Example:**
+```python
+# dagster/definitions.py
+import os
+import dagster as dg
+from dagster.assets import opportunity, opp_history, task, event
+from dagster.resources.nango import NangoResource
+from dagster.resources.postgres import PostgresResource
+
+deployment = os.getenv("DAGSTER_DEPLOYMENT", "local")
+
+resources_by_env = {
+    "local": {
+        "nango": NangoResource(
+            secret_key=dg.EnvVar("NANGO_SECRET_KEY"),
+            connection_id=dg.EnvVar("NANGO_CONNECTION_ID"),
+        ),
+        "postgres": PostgresResource(database_url=dg.EnvVar("DATABASE_URL")),
+    },
+    "production": {
+        "nango": NangoResource(
+            secret_key=dg.EnvVar("NANGO_SECRET_KEY"),
+            connection_id=dg.EnvVar("NANGO_CONNECTION_ID"),
+        ),
+        "postgres": PostgresResource(database_url=dg.EnvVar("DATABASE_URL")),
+    },
+}
+
+defs = dg.Definitions(
+    assets=dg.load_assets_from_modules([opportunity, opp_history, task, event]),
+    resources=resources_by_env[deployment],
+)
+```
+
+---
+
+## Data Flow
+
+### Pull-Based Ingestion Flow (new in v0.3)
+
+```
+Dagster Scheduler or Manual Materialize trigger
+    ↓
+@asset salesforce_opportunities (or opp_history, task, event)
+    ↓
+NangoResource.client() → NangoClient instance
+    ↓
+asyncio.run(client.fetch_all_records(model="Opportunity", connection_id=...))
+    ↓  (httpx paginates through /records API)
+Nango Records API → list[dict] of all records
+    ↓
+PostgresResource._conn (psycopg2)
+    ↓
+INSERT INTO data_records (id, event_id, model_name, connection_id, data)
+ON CONFLICT (event_id) DO UPDATE SET data = EXCLUDED.data
+    ↓
+dg.MaterializeResult(metadata={"record_count": len(records)})
+```
+
+### Push-Based Ingestion Flow (existing, v0.2 — unchanged)
+
+```
+Nango Webhook → POST /webhooks/nango
+    ↓ (202 fast-ack, background task)
+AddDataCommand → AddDataHandler → PostgresDataRepository.add()
+    ↓ (asyncpg, ON CONFLICT DO NOTHING)
+data_records + audit_log (same transaction)
+```
+
+### Shared Database Contract
+
+Both flows write to `data_records`. The shared contract is:
+- **Table:** `data_records` with columns `(id, event_id, model_name, connection_id, data, created_at)`
+- **Idempotency key:** `event_id` (unique index)
+- **Conflict behavior:** Dagster uses `DO UPDATE` (overwrites); webhook uses `DO NOTHING` (preserves first-seen)
+
+This divergence is intentional. Dagster is a deliberate full refresh; webhooks are authoritative first-write events.
+
+---
+
+## Local Development Setup
+
+```yaml
+# workspace.yaml (at project root)
+load_from:
+  - python_module:
+      module_name: dagster.definitions
+```
+
+```bash
+# Terminal 1: FastAPI service (existing)
+uvicorn src.adapters.driving.fastapi.app:app --reload --port 8000
+
+# Terminal 2: Dagster UI + daemon (new)
+dagster dev
+# Dagster UI opens at http://localhost:3000
+```
+
+Environment variables needed locally (`.env` file, already read by `settings.py`):
+- `DATABASE_URL=postgresql+asyncpg://...` — both processes use this
+- `NANGO_SECRET_KEY=...` — Dagster NangoResource
+- `NANGO_CONNECTION_ID=...` — Dagster assets
+- `DAGSTER_DEPLOYMENT=local` — selects local resource config
+
+---
+
+## Dagster Cloud Deployment
+
+```yaml
+# dagster_cloud.yaml
+locations:
+  - location_name: data-hub
+    code_source:
+      python_module: dagster.definitions
+    build:
+      directory: .
+```
+
+Environment variables needed in Dagster Cloud:
+- `DATABASE_URL` — production PostgreSQL URL (without `+asyncpg` suffix for psycopg2)
+- `NANGO_SECRET_KEY` — Nango API auth
+- `NANGO_CONNECTION_ID` — Salesforce connection ID(s)
+- `DAGSTER_DEPLOYMENT=production`
+
+---
+
+## New vs Modified Component Inventory
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `dagster/definitions.py` | NEW | Dagster entry point — Definitions(assets, resources) |
+| `dagster/assets/opportunity.py` | NEW | @asset for Salesforce Opportunity full refresh |
+| `dagster/assets/opp_history.py` | NEW | @asset for OpportunityHistory full refresh |
+| `dagster/assets/task.py` | NEW | @asset for Task full refresh |
+| `dagster/assets/event.py` | NEW | @asset for Event full refresh |
+| `dagster/resources/nango.py` | NEW | ConfigurableResource wrapping NangoClient |
+| `dagster/resources/postgres.py` | NEW | ConfigurableResource using psycopg2 |
+| `workspace.yaml` | NEW | `dagster dev` entrypoint for local dev |
+| `dagster.yaml` | NEW | Dagster instance config (run storage backend) |
+| `pyproject.toml` | MODIFIED | Add `dagster`, `dagster-webserver` dependencies |
+| `src/` (entire FastAPI service) | NO CHANGE | Completely isolated from Dagster |
+| `nango-integrations/` (TypeScript) | NO CHANGE | Nango syncs push data; Dagster pulls it |
+
+---
+
+## Build Order
+
+Build order is driven by dependency graph. Each step unblocks the next.
+
+```
+Step 1: Add dagster + dagster-webserver to pyproject.toml
+    Unblocks: everything else
+
+Step 2: Create workspace.yaml + dagster/definitions.py (empty skeleton)
+    Validates: dagster dev starts without error before any assets exist
+
+Step 3: Create dagster/resources/postgres.py (PostgresResource)
+    Prerequisite for: all assets that write to database
+
+Step 4: Create dagster/resources/nango.py (NangoResource)
+    Prerequisite for: all assets that pull from Nango
+
+Step 5: Create dagster/assets/opportunity.py
+    First asset — establishes the full data flow pattern end to end
+    Validates: Nango → psycopg2 → data_records pipeline works
+
+Step 6: Create dagster/assets/opp_history.py, task.py, event.py
+    Follows pattern from Step 5
+    Can be parallelized once Step 5 is validated
+
+Step 7: Wire all assets into definitions.py
+    Final step — register assets in Definitions
+
+Step 8: Add schedule or sensor to definitions.py (optional for v0.3)
+    Deferred: manual materialization sufficient for MVP
+```
+
+Steps 3 and 4 can be developed in parallel after Step 1.
+Steps 6a–6c (opp_history, task, event) can be developed in parallel after Step 5 validates the pattern.
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Importing Kernel into Dagster Assets
+
+**What people do:** Import `AddDataCommand` or `AddDataHandler` from `src/kernel/` in Dagster assets to reuse persistence logic.
+
+**Why it's wrong:** The kernel's `DataRepository` port is async (asyncpg). Dagster assets are sync. Bridging this requires `asyncio.run()` inside the handler, breaking the kernel's async design. More importantly, Dagster assets are the source of truth for pull-based ingestion — they should write data directly, not route through the webhook ingestion path.
+
+**Do this instead:** Dagster assets write directly to PostgreSQL via `PostgresResource`. The `data_records` table schema is the integration contract, not the Python kernel classes.
+
+### Anti-Pattern 2: Sharing the asyncpg Engine Across Processes
+
+**What people do:** Instantiate one SQLAlchemy async engine and attempt to share it between FastAPI and Dagster.
+
+**Why it's wrong:** Python objects cannot be shared across OS process boundaries. Each process needs its own connection pool. FastAPI's `asyncpg` engine lives in the FastAPI process; Dagster's `psycopg2` connection lives in the Dagster process.
+
+**Do this instead:** Same `DATABASE_URL` env var, different drivers and connection pools in each process.
+
+### Anti-Pattern 3: Embedding Dagster Inside FastAPI
+
+**What people do:** Mount the Dagster webserver as an ASGI sub-application inside FastAPI, or launch `dagster dev` as a subprocess from the FastAPI lifespan.
+
+**Why it's wrong:** Dagster has its own daemon, scheduler, and webserver. Embedding it creates port conflicts, lifecycle coupling, and breaks Dagster Cloud deployment which expects a standalone code location entry point.
+
+**Do this instead:** Run `dagster dev` in a separate terminal (local) or as a separate container/process (production).
+
+### Anti-Pattern 4: Hardcoding connection_id in Asset Body
+
+**What people do:** Write `connection_id = "salesforce-prod"` directly in the asset function body.
+
+**Why it's wrong:** Different environments (local, staging, production) and different customers have different `connection_id` values. Hardcoded values make assets non-portable.
+
+**Do this instead:** Pass `connection_id` via `dg.EnvVar("NANGO_CONNECTION_ID")` on the resource, so the env var controls which Salesforce org Dagster pulls from.
+
+---
+
+## Sources
+
+- [Dagster project structure overview](https://docs.dagster.io/guides/build/projects/project-structure/project-overview) — HIGH confidence (official docs)
+- [Transitioning from development to production](https://docs.dagster.io/guides/operate/dev-to-prod) — HIGH confidence (official docs)
+- [Defining resources](https://docs.dagster.io/guides/build/external-resources/defining-resources) — HIGH confidence (official docs)
+- [Managing resource state / yield_for_execution](https://docs.dagster.io/guides/build/external-resources/managing-resource-state) — HIGH confidence (official docs)
+- [workspace.yaml reference](https://docs.dagster.io/deployment/code-locations/workspace-yaml) — HIGH confidence (official docs)
+- [Multiple code locations — monorepo](https://github.com/dagster-io/dagster/discussions/31890) — MEDIUM confidence (community discussion)
+- [Connecting to APIs](https://docs.dagster.io/guides/build/external-resources/connecting-to-apis) — HIGH confidence (official docs)
+- Existing codebase: `src/adapters/driven/nango/client.py`, `src/adapters/driven/postgresql/repository.py`, `src/config/settings.py`, `pyproject.toml` — HIGH confidence (inspected directly)
+
+---
+*Architecture research for: data-hub v0.3 — Dagster Salesforce Pipeline*
+*Researched: 2026-03-20*
