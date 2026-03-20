@@ -1,0 +1,259 @@
+[
+  {
+    "providerConfigKey": "github",
+    "actions": [
+      {
+        "type": "action",
+        "description": "Create an issue in GitHub",
+        "endpoint": {
+          "method": "POST",
+          "path": "/example/github/issues",
+          "group": "Issues"
+        },
+        "input": "ActionInput_github_createissue",
+        "name": "create-issue",
+        "output": [
+          "ActionOutput_github_createissue"
+        ],
+        "scopes": [],
+        "usedModels": [
+          "ActionInput_github_createissue",
+          "ActionOutput_github_createissue"
+        ],
+        "version": "1.0.0",
+        "json_schema": {
+          "definitions": {
+            "ActionInput_github_createissue": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "issue_number": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "author": {
+                  "type": "string"
+                },
+                "author_id": {
+                  "type": "number"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "date_created": {
+                  "type": "string"
+                },
+                "date_last_modified": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "owner",
+                "repo",
+                "issue_number",
+                "title",
+                "state",
+                "author",
+                "author_id",
+                "body",
+                "date_created",
+                "date_last_modified"
+              ],
+              "additionalProperties": false
+            },
+            "ActionOutput_github_createissue": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    ],
+    "syncs": [
+      {
+        "type": "sync",
+        "description": "Fetches the Github issues from all a user's repositories.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/example/github/issues",
+            "group": "Issues"
+          }
+        ],
+        "input": "SyncMetadata_github_fetchissues",
+        "name": "fetch-issues",
+        "output": [
+          "GithubIssue"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "full",
+        "track_deletes": false,
+        "usedModels": [
+          "GithubIssue",
+          "SyncMetadata_github_fetchissues"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "GithubIssue": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "issue_number": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "author": {
+                  "type": "string"
+                },
+                "author_id": {
+                  "type": "number"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "date_created": {
+                  "type": "string"
+                },
+                "date_last_modified": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "owner",
+                "repo",
+                "issue_number",
+                "title",
+                "state",
+                "author",
+                "author_id",
+                "body",
+                "date_created",
+                "date_last_modified"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_github_fetchissues": {
+              "type": "null"
+            }
+          }
+        }
+      },
+      {
+        "type": "sync",
+        "description": "Lists all the files of a Github repo given a specific branch",
+        "auto_start": false,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/files",
+            "group": "Files"
+          }
+        ],
+        "input": "SyncMetadata_github_listfiles",
+        "name": "list-files",
+        "output": [
+          "GithubRepoFile"
+        ],
+        "runs": "every hour",
+        "scopes": [
+          "repo"
+        ],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "GithubRepoFile",
+          "SyncMetadata_github_listfiles"
+        ],
+        "version": "2.0.1",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "GithubRepoFile": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "last_modified_date": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "url",
+                "last_modified_date"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_github_listfiles": {
+              "type": "object",
+              "properties": {
+                "owner": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "owner",
+                "repo",
+                "branch"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    ],
+    "onEventScripts": {
+      "post-connection-creation": [],
+      "pre-connection-deletion": [
+        "pre-connection-deletion"
+      ],
+      "validate-connection": []
+    }
+  }
+]

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from src.adapters.driven.sqlite.models import AuditLog, DataRecord
+from src.adapters.driven.postgresql.models import AuditLog, DataRecord
 
 
 class PostgresDataRepository:
