@@ -4,6 +4,8 @@ Tests repository contract against real SQLite database.
 """
 import pytest
 
+from src.adapters.driven.sqlite.repository import SQLiteDataRepository
+
 
 class TestSQLiteDataRepository:
     """Tests for SQLiteDataRepository implementation."""
@@ -65,3 +67,89 @@ class TestSQLiteDataRepository:
         assert id1 != id2
         assert await repository.get("contacts", id1) == data
         assert await repository.get("contacts", id2) == data
+
+
+async def test_query_returns_all_records_for_model(repository: SQLiteDataRepository) -> None:
+    """Query without filters returns all records for model."""
+    await repository.add("contacts", "conn1", {"name": "Alice"})
+    await repository.add("contacts", "conn2", {"name": "Bob"})
+    await repository.add("orders", "conn1", {"amount": 100})  # Different model
+
+    results = await repository.query("contacts")
+
+    assert len(results) == 2
+    names = [r["name"] for r in results]
+    assert "Alice" in names
+    assert "Bob" in names
+
+
+async def test_query_with_connection_id_filter(repository: SQLiteDataRepository) -> None:
+    """Query with connection_id filter returns only matching records."""
+    await repository.add("contacts", "conn1", {"name": "Alice"})
+    await repository.add("contacts", "conn2", {"name": "Bob"})
+    await repository.add("contacts", "conn1", {"name": "Carol"})
+
+    results = await repository.query("contacts", filters={"connection_id": "conn1"})
+
+    assert len(results) == 2
+    names = [r["name"] for r in results]
+    assert "Alice" in names
+    assert "Carol" in names
+    assert "Bob" not in names
+
+
+async def test_query_respects_limit(repository: SQLiteDataRepository) -> None:
+    """Query respects limit parameter."""
+    for i in range(10):
+        await repository.add("contacts", f"conn{i}", {"name": f"User{i}"})
+
+    results = await repository.query("contacts", limit=5)
+
+    assert len(results) == 5
+
+
+async def test_query_returns_empty_when_no_matches(repository: SQLiteDataRepository) -> None:
+    """Query returns empty list when no records match."""
+    await repository.add("contacts", "conn1", {"name": "Alice"})
+
+    results = await repository.query("contacts", filters={"connection_id": "nonexistent"})
+
+    assert results == []
+
+
+async def test_query_returns_system_fields(repository: SQLiteDataRepository) -> None:
+    """Query returns system fields (id, connection_id, model, created_at) alongside data.
+
+    Per CONTEXT.md locked decision: "Include system fields in results"
+    """
+    await repository.add("contacts", "conn1", {"name": "Alice", "email": "alice@example.com"})
+
+    results = await repository.query("contacts")
+
+    assert len(results) == 1
+    record = results[0]
+    # System fields must be present
+    assert "id" in record
+    assert "connection_id" in record
+    assert record["connection_id"] == "conn1"
+    assert "model" in record
+    assert record["model"] == "contacts"
+    assert "created_at" in record
+    # Data payload fields also present
+    assert record["name"] == "Alice"
+    assert record["email"] == "alice@example.com"
+
+
+async def test_query_ignores_non_connection_id_filters(repository: SQLiteDataRepository) -> None:
+    """Query ignores filters other than connection_id (no JSON field filtering in v1).
+
+    Per CONTEXT.md locked decision: "no filtering on raw JSON data fields"
+    """
+    await repository.add("contacts", "conn1", {"name": "Alice", "status": "active"})
+    await repository.add("contacts", "conn2", {"name": "Bob", "status": "inactive"})
+
+    # Try to filter on 'status' (a JSON field) - should be ignored
+    results = await repository.query("contacts", filters={"status": "active"})
+
+    # All records returned because JSON field filtering is not supported
+    assert len(results) == 2
