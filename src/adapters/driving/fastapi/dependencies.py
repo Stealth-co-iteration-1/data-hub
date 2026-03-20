@@ -14,6 +14,7 @@ from src.adapters.driven.event_bus.publisher import InMemoryEventPublisher
 from src.adapters.driven.schema_registry.permissive import PermissiveSchemaRegistry
 from src.config.settings import settings
 from src.kernel.handlers.add_data_handler import AddDataHandler
+from src.kernel.handlers.query_handler import QueryHandler
 
 
 # Global event publisher instance - shared across requests
@@ -97,3 +98,18 @@ async def get_add_data_handler(request: Request) -> AddDataHandler:
         event_publisher=_event_publisher,
         schema_registry=schema_registry,
     )
+
+
+async def get_query_handler(request: Request) -> QueryHandler:
+    """Dependency injection for QueryHandler.
+
+    Creates handler with repository from app.state (SQLite or PostgreSQL).
+
+    Args:
+        request: FastAPI request (provides app.state)
+
+    Returns:
+        Configured QueryHandler instance
+    """
+    repository = request.app.state.repository
+    return QueryHandler(repository=repository)
