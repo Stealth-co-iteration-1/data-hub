@@ -15,13 +15,13 @@ const opportunityHistorySchema = z.object({
     id: sfId,
 
     // Core fields (HIST-01)
+    // Note: ForecastCategoryName is NOT available on OpportunityHistory (only on Opportunity)
     Id: sfId,
     OpportunityId: sfId,
     StageName: sfNullableString,         // nullable — null when only Amount changed
     Amount: sfCurrency,                  // nullable number
     CloseDate: sfDate,                   // YYYY-MM-DD
     Probability: sfPercentage,           // nullable number 0-100
-    ForecastCategoryName: sfNullableString,
     CreatedDate: sfDateTime,             // when the change occurred
     CreatedById: sfId                    // user who made the change
 });
@@ -32,8 +32,9 @@ type OpportunityHistory = z.infer<typeof opportunityHistorySchema>;
 // SOQL field list (flat table — no nested relationships)
 // ---------------------------------------------------------------------------
 
+// Note: ForecastCategoryName is NOT available on OpportunityHistory — only on Opportunity
 const OPPORTUNITY_HISTORY_SOQL_FIELDS =
-    'Id, OpportunityId, StageName, Amount, CloseDate, Probability, ForecastCategoryName, CreatedDate, CreatedById';
+    'Id, OpportunityId, StageName, Amount, CloseDate, Probability, CreatedDate, CreatedById';
 
 // ---------------------------------------------------------------------------
 // Incremental SOQL builder
