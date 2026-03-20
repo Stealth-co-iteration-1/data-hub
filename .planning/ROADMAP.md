@@ -43,7 +43,7 @@ Plans:
   5. Incremental sync pulls only records modified since last sync via LastModifiedDate
 **Plans:** 1/1 plans complete
 Plans:
-- [ ] 07-01-PLAN.md - Opportunity sync with Account, Owner, and OpportunityContactRoles relationships
+- [x] 07-01-PLAN.md - Opportunity sync with Account, Owner, and OpportunityContactRoles relationships
 
 ### Phase 8: OpportunityHistory Sync
 **Goal**: Stage change history records available for downstream velocity analysis
@@ -53,7 +53,9 @@ Plans:
   1. OpportunityHistory records include all spec fields (Id, OpportunityId, StageName, Amount, CloseDate, etc.)
   2. Incremental sync uses CreatedDate filter for subsequent pulls
   3. Records ordered by OpportunityId, CreatedDate ASC enabling stage velocity derivation
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 08-01-PLAN.md - OpportunityHistory sync with CreatedDate incremental filter and velocity ordering
 
 ### Phase 9: Activity Syncs
 **Goal**: Sales activities (emails, calls, meetings) flowing with relationship keys preserved
@@ -73,7 +75,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 6. Salesforce Sync Infrastructure | 1/1 | Complete   | 2026-03-20 |
 | 7. Opportunity Sync | 1/1 | Complete   | 2026-03-20 |
-| 8. OpportunityHistory Sync | 0/? | Not started | - |
+| 8. OpportunityHistory Sync | 0/1 | Planned | - |
 | 9. Activity Syncs | 0/? | Not started | - |
 
 ## Coverage
@@ -116,4 +118,4 @@ Phases 7, 8, and 9 can execute in parallel after Phase 6 completes.
 
 ---
 *Created: 2026-03-19*
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-20*
