@@ -114,8 +114,10 @@ Plan: 2 of 2 (all plans complete)
 
 ### Files Modified This Session
 
+- nango-integrations/salesforce/syncs/fetch-tasks.ts (created)
 - nango-integrations/salesforce/syncs/fetch-events.ts (created)
 - nango-integrations/index.ts (updated)
+- .planning/phases/09-activity-syncs/09-01-SUMMARY.md (created)
 - .planning/phases/09-activity-syncs/09-02-SUMMARY.md (created)
 - .planning/STATE.md (updated)
 - .planning/ROADMAP.md (updated)

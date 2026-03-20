@@ -23,9 +23,9 @@ Requirements for v0.2.0 milestone: Salesforce Revenue Reporting Syncs.
 
 ### Task Sync (Conditional)
 
-- [ ] **TASK-01**: Nango sync pulls Task records with spec fields (Id, Subject, Status, ActivityDate, CreatedDate, WhoId, Who.Email, WhatId, OwnerId, Owner.Email, Type, CallType, CallDurationInSeconds, CallDisposition, TaskSubtype)
-- [ ] **TASK-02**: Sync filters by ActivityDate range for manageable result sets
-- [ ] **TASK-03**: WhoId/WhatId preserved for downstream join resolution
+- [x] **TASK-01**: Nango sync pulls Task records with spec fields (Id, Subject, Status, ActivityDate, CreatedDate, WhoId, Who.Email, WhatId, OwnerId, Owner.Email, Type, CallType, CallDurationInSeconds, CallDisposition, TaskSubtype)
+- [x] **TASK-02**: Sync filters by ActivityDate range for manageable result sets
+- [x] **TASK-03**: WhoId/WhatId preserved for downstream join resolution
 
 ### Event Sync (Conditional)
 
@@ -78,9 +78,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HIST-01 | Phase 8 | Complete |
 | HIST-02 | Phase 8 | Complete |
 | HIST-03 | Phase 8 | Complete |
-| TASK-01 | Phase 9 | Pending |
-| TASK-02 | Phase 9 | Pending |
-| TASK-03 | Phase 9 | Pending |
+| TASK-01 | Phase 9 | Complete |
+| TASK-02 | Phase 9 | Complete |
+| TASK-03 | Phase 9 | Complete |
 | EVNT-01 | Phase 9 | Complete |
 | EVNT-02 | Phase 9 | Complete |
 | EVNT-03 | Phase 9 | Complete |
