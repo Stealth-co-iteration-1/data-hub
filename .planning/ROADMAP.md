@@ -45,7 +45,7 @@ Plans:
 **Milestone Goal:** Production-ready storage with configurable SQLite/PostgreSQL backends and SQL-based query capability via kernel command and HTTP endpoint.
 
 - [x] **Phase 4: PostgreSQL Backend** - PostgreSQL adapter with asyncpg, ENV-based backend factory, migration CI hardening
-- [ ] **Phase 5: Query Capability** - QueryData kernel command, both adapters implement query(), injection-safe HTTP endpoint
+- [x] **Phase 5: Query Capability** - QueryData kernel command, both adapters implement query(), injection-safe HTTP endpoint (completed 2026-03-20)
 
 ## Phase Details
 
@@ -93,4 +93,4 @@ Plans:
 | 2. Persistence & Data Flow | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 3. Webhook Transport & Observability | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 4. PostgreSQL Backend | v0.1.0 | 3/3 | Complete | 2026-03-19 |
-| 5. Query Capability | 2/3 | In Progress|  | - |
+| 5. Query Capability | 3/3 | Complete   | 2026-03-20 | - |

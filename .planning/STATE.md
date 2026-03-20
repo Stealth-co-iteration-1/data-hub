@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-20T00:06:33.991Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-03-20T00:14:00.000Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-20
-**Status**: Phase 5 executing — 2 of 3 plans done
+**Status**: Phase 5 COMPLETE — all 3 plans done (v0.1.0 milestone complete)
 
 ---
 
@@ -33,8 +33,8 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 05 (query-capability) — EXECUTING
-Plan: 3 of 3
+Phase: 05 (query-capability) — COMPLETE
+Plan: 3 of 3 (all plans complete)
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Plan: 3 of 3
 **v0.1.0 velocity:** Plan 04-03 completed in 4 min (6 tasks, 8 files, 102 tests)
 **v0.1.0 velocity:** Plan 05-01 completed in 2 min (4 tasks, 9 files, 13 tests)
 **v0.1.0 velocity:** Plan 05-02 completed in 2 min (4 tasks, 4 files, 12 tests)
+**v0.1.0 velocity:** Plan 05-03 completed in 3 min (5 tasks, 5 files, 13 tests)
 
 ---
 
@@ -80,6 +81,13 @@ Plan: 3 of 3
 - System fields (id, connection_id, model, created_at) always included in query results alongside data payload
 - Non-connection_id filter keys silently ignored — matches locked decision without breaking callers
 
+**2026-03-20**: HTTP query endpoint security pattern: model name allowlist + filter value size cap
+
+- Model name regex `^[a-z][a-z0-9_]*$` prevents path param injection
+- Filter values capped at 256 chars, tested via integration tests
+- has_more detection: +1 fetch trick; MAX_QUERY_LIMIT boundary limitation documented and accepted
+- Tests use AsyncClient + FakeDataRepository via dependency_overrides (project async pattern)
+
 **2026-03-18**: Protocol extension is critical-path blocker
 
 - DataRepository.query() must be declared before any adapter can implement it or any handler can call it
@@ -106,14 +114,14 @@ None (asyncpg added in Plan 04-01)
 
 ## Session Continuity
 
-Last session: 2026-03-20T00:06:33.988Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-03-20T00:14:00.000Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
 
-**Next step**: Phase 5 Plan 02 complete. Ready to start Plan 03 (HTTP query endpoint)
+**Phase 5 Plan 03 complete (v0.1.0 milestone complete):**
 
-**Phase 5 Plan 02 complete:**
-
-- Both adapters' query() methods now filter only on connection_id (column-only, per locked decision)
-- System fields (id, connection_id, model, created_at) returned in all query results
-- 6 SQLite + 6 PostgreSQL integration tests added
+- POST /query/{model} endpoint with model name allowlist and filter value size cap
+- Problem Details RFC 7807 error responses on 400
+- has_more detection with +1 fetch trick (MAX_QUERY_LIMIT boundary limitation documented)
+- 13 integration tests + 4 unit tests = 17 tests pass
+- Pydantic V2 ConfigDict used for all new schemas
