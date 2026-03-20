@@ -35,9 +35,9 @@ Requirements for v0.2.0 milestone: Salesforce Revenue Reporting Syncs.
 
 ### Infrastructure
 
-- [ ] **INFR-01**: Salesforce syncs use Nango's createSync pattern with Zod schemas
-- [ ] **INFR-02**: Pagination follows Salesforce REST API nextRecordsUrl pattern
-- [ ] **INFR-03**: Sync models match data-hub schema validation expectations
+- [x] **INFR-01**: Salesforce syncs use Nango's createSync pattern with Zod schemas
+- [x] **INFR-02**: Pagination follows Salesforce REST API nextRecordsUrl pattern
+- [x] **INFR-03**: Sync models match data-hub schema validation expectations
 
 ## Future Requirements
 
@@ -84,9 +84,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVNT-01 | Phase 9 | Pending |
 | EVNT-02 | Phase 9 | Pending |
 | EVNT-03 | Phase 9 | Pending |
-| INFR-01 | Phase 6 | Pending |
-| INFR-02 | Phase 6 | Pending |
-| INFR-03 | Phase 6 | Pending |
+| INFR-01 | Phase 6 | Complete |
+| INFR-02 | Phase 6 | Complete |
+| INFR-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v0.2.0 requirements: 17 total
