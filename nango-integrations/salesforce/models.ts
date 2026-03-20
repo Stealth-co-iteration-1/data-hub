@@ -44,10 +44,15 @@ export const sfNullableBoolean = z.union([z.boolean(), z.null()]);
 export const sfId = z.string().length(18);
 
 /**
- * Salesforce DateTime field in ISO 8601 format (e.g. "2024-01-15T10:30:00.000Z").
- * Used for fields like CreatedDate, LastModifiedDate, CloseDate (when typed as datetime).
+ * Salesforce DateTime field in ISO 8601 format.
+ * Salesforce returns datetimes like "2024-01-15T10:30:00.000+0000" (with timezone offset)
+ * rather than strict "Z" suffix, so we use a regex pattern instead of z.datetime().
+ * Used for fields like CreatedDate, LastModifiedDate.
  */
-export const sfDateTime = z.string().datetime();
+export const sfDateTime = z.string().regex(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{4})$/,
+    'Invalid Salesforce datetime format'
+);
 
 /**
  * Salesforce Date field in YYYY-MM-DD format (e.g. "2024-01-15").
