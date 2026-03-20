@@ -19,11 +19,17 @@ export const SALESFORCE_API_VERSION = 'v60.0';
  * Salesforce query responses include a `nextRecordsUrl` field when more records
  * are available. This config tells Nango to follow that link automatically.
  *
+ * - type: 'link' — Salesforce uses link-based pagination (nextRecordsUrl)
+ * - link_path_in_response_body — path to the next page URL in the response
+ * - response_path — path to the records array in the response (Salesforce returns { records: [...] })
+ *
  * Example:
  *   for await (const batch of nango.paginate({ endpoint: queryEndpoint(soql), paginate: salesforcePaginationConfig })) { ... }
  */
 export const salesforcePaginationConfig = {
-    link_path_in_response_body: 'nextRecordsUrl'
+    type: 'link' as const,
+    link_path_in_response_body: 'nextRecordsUrl',
+    response_path: 'records'
 };
 
 /**
