@@ -32,7 +32,7 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Active
 
-- [ ] Nango syncs for Salesforce revenue reporting data
+- [x] Salesforce sync infrastructure (utils, Zod schemas, types) — *Validated in Phase 6: Salesforce Sync Infrastructure*
 - [ ] Opportunity sync with nested OpportunityContactRoles
 - [ ] OpportunityHistory sync for stage tracking
 - [ ] Task sync for emails and calls
@@ -121,4 +121,4 @@ Data from connected integrations flows reliably into the platform with strict va
 - Health check, Prometheus metrics, structured logging
 
 ---
-*Last updated: 2026-03-20 after v0.2.0 milestone started*
+*Last updated: 2026-03-20 after Phase 6 (Salesforce Sync Infrastructure) complete*
