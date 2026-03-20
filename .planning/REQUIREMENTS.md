@@ -70,29 +70,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPPT-01 | TBD | Pending |
-| OPPT-02 | TBD | Pending |
-| OPPT-03 | TBD | Pending |
-| OPPT-04 | TBD | Pending |
-| OPPT-05 | TBD | Pending |
-| HIST-01 | TBD | Pending |
-| HIST-02 | TBD | Pending |
-| HIST-03 | TBD | Pending |
-| TASK-01 | TBD | Pending |
-| TASK-02 | TBD | Pending |
-| TASK-03 | TBD | Pending |
-| EVNT-01 | TBD | Pending |
-| EVNT-02 | TBD | Pending |
-| EVNT-03 | TBD | Pending |
-| INFR-01 | TBD | Pending |
-| INFR-02 | TBD | Pending |
-| INFR-03 | TBD | Pending |
+| OPPT-01 | Phase 7 | Pending |
+| OPPT-02 | Phase 7 | Pending |
+| OPPT-03 | Phase 7 | Pending |
+| OPPT-04 | Phase 7 | Pending |
+| OPPT-05 | Phase 7 | Pending |
+| HIST-01 | Phase 8 | Pending |
+| HIST-02 | Phase 8 | Pending |
+| HIST-03 | Phase 8 | Pending |
+| TASK-01 | Phase 9 | Pending |
+| TASK-02 | Phase 9 | Pending |
+| TASK-03 | Phase 9 | Pending |
+| EVNT-01 | Phase 9 | Pending |
+| EVNT-02 | Phase 9 | Pending |
+| EVNT-03 | Phase 9 | Pending |
+| INFR-01 | Phase 6 | Pending |
+| INFR-02 | Phase 6 | Pending |
+| INFR-03 | Phase 6 | Pending |
 
 **Coverage:**
 - v0.2.0 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after initial definition*
+*Last updated: 2026-03-19 after roadmap creation*
