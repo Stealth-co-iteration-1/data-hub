@@ -1,7 +1,7 @@
 import { createSync } from 'nango';
 import * as z from 'zod';
-import { buildQuery, queryEndpoint, salesforcePaginationConfig } from '../utils.js';
-import { sfId, sfDateTime, sfDate, sfNullableString, sfNullableNumber, sfNullableBoolean, sfCurrency, sfPercentage } from '../types.js';
+import { queryEndpoint, salesforcePaginationConfig } from '../utils.js';
+import { sfId, sfDateTime, sfDate, sfNullableString, sfNullableNumber, sfCurrency, sfPercentage } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Nested relationship schemas
@@ -36,9 +36,14 @@ const opportunityContactRoleSchema = z.object({
 
 // ---------------------------------------------------------------------------
 // Main Opportunity schema (14 spec fields + 3 relationship objects)
+// Nango requires a lowercase `id` field on every model (used as record key).
+// We include both the canonical Salesforce `Id` and the required Nango `id`.
 // ---------------------------------------------------------------------------
 
 const opportunitySchema = z.object({
+    // Nango record key (maps from Salesforce Id in exec)
+    id: sfId,
+
     // Core fields (OPPT-01)
     Id: sfId,
     Name: z.string(),
@@ -83,3 +88,65 @@ const OPPORTUNITY_SOQL_FIELDS = `
     Owner.Name, Owner.Email,
     (SELECT Id, ContactId, Role, IsPrimary, Contact.Email FROM OpportunityContactRoles)
 `.replace(/\s+/g, ' ').trim();
+
+// ---------------------------------------------------------------------------
+// Incremental SOQL builder (buildQuery doesn't handle relationship fields)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the full SOQL query for Opportunities.
+ *
+ * When `lastSyncDate` is provided, adds a `WHERE LastModifiedDate > {date}` clause
+ * so the sync only fetches records changed since the last run (OPPT-05).
+ */
+function buildOpportunityQuery(lastSyncDate?: Date): string {
+    const base = `SELECT ${OPPORTUNITY_SOQL_FIELDS} FROM Opportunity`;
+    if (lastSyncDate !== undefined) {
+        return `${base} WHERE LastModifiedDate > ${lastSyncDate.toISOString()}`;
+    }
+    return base;
+}
+
+// ---------------------------------------------------------------------------
+// Sync definition
+// ---------------------------------------------------------------------------
+
+const sync = createSync({
+    description: 'Fetches Salesforce Opportunity records with Account, Owner, and OpportunityContactRoles relationships.',
+    version: '1.0.0',
+    endpoints: [{ method: 'GET', path: '/salesforce/opportunities', group: 'Opportunities' }],
+    frequency: 'every hour',
+    autoStart: true,
+    syncType: 'incremental',
+
+    metadata: z.void(),
+    models: {
+        Opportunity: opportunitySchema
+    },
+
+    exec: async (nango) => {
+        // lastSyncDate is a property (Date | undefined) — no function call needed
+        const soql = buildOpportunityQuery(nango.lastSyncDate);
+
+        for await (const batch of nango.paginate({
+            endpoint: queryEndpoint(soql),
+            paginate: salesforcePaginationConfig,
+            retries: 3
+        })) {
+            // nango.paginate returns the records array from the Salesforce SOQL response.
+            // We normalise each record by adding the lowercase `id` key required by Nango.
+            const opportunities: Opportunity[] = batch.map((record: unknown) => {
+                const raw = record as Record<string, unknown>;
+                return opportunitySchema.parse({ ...raw, id: raw['Id'] });
+            });
+
+            if (opportunities.length > 0) {
+                await nango.batchSave(opportunities, 'Opportunity');
+                await nango.log(`Saved ${opportunities.length} opportunities`);
+            }
+        }
+    }
+});
+
+export type NangoSyncLocal = Parameters<(typeof sync)['exec']>[0];
+export default sync;
