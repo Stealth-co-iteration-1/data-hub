@@ -141,27 +141,46 @@ class PostgresDataRepository:
     ) -> list[dict[str, Any]]:
         """Query records with optional filters.
 
+        Per CONTEXT.md locked decision: Only connection_id filtering allowed.
+        No filtering on raw JSON data fields (deferred to future phase).
+
+        Returns dicts with system fields (id, connection_id, model, created_at)
+        alongside the data payload per CONTEXT.md decision.
+
         Args:
             model: Model name to query
-            filters: Optional filter conditions (column: value)
+            filters: Optional filter conditions. V1: {"connection_id": "..."} only.
             limit: Maximum records to return (enforced)
 
         Returns:
-            List of matching records as plain dicts
+            List of matching records as plain dicts with system fields
         """
         async with self._session_factory() as session:
             stmt = select(DataRecord).where(DataRecord.model_name == model)
 
-            # Apply filters on JSON data column
+            # V1: Only connection_id filtering allowed
+            # CONTEXT.md locked decision: "no filtering on raw JSON data fields"
             if filters:
-                for key, value in filters.items():
-                    # PostgreSQL JSONB extraction: data->>'key' = value
-                    stmt = stmt.where(DataRecord.data[key].astext == str(value))
+                if "connection_id" in filters:
+                    stmt = stmt.where(
+                        DataRecord.connection_id == filters["connection_id"]
+                    )
+                # Silently ignore other filter keys - they're not supported in v1
 
             stmt = stmt.limit(limit)
 
             result = await session.execute(stmt)
             records = result.scalars().all()
 
-            # Return plain dicts - never leak ORM objects
-            return [record.data for record in records]
+            # Return dicts with system fields per CONTEXT.md decision:
+            # "Include system fields in results: id, connection_id, model, created_at alongside data payload"
+            return [
+                {
+                    "id": record.id,
+                    "connection_id": record.connection_id,
+                    "model": record.model_name,
+                    "created_at": record.created_at.isoformat(),
+                    **record.data,
+                }
+                for record in records
+            ]
