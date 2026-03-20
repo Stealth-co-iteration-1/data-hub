@@ -17,9 +17,9 @@ Requirements for v0.2.0 milestone: Salesforce Revenue Reporting Syncs.
 
 ### OpportunityHistory Sync
 
-- [ ] **HIST-01**: Nango sync pulls OpportunityHistory records (Id, OpportunityId, StageName, Amount, CloseDate, Probability, ForecastCategoryName, CreatedDate, CreatedById)
-- [ ] **HIST-02**: Sync uses incremental CreatedDate filter for subsequent pulls
-- [ ] **HIST-03**: Records ordered by OpportunityId, CreatedDate ASC for stage velocity derivation
+- [x] **HIST-01**: Nango sync pulls OpportunityHistory records (Id, OpportunityId, StageName, Amount, CloseDate, Probability, ForecastCategoryName, CreatedDate, CreatedById)
+- [x] **HIST-02**: Sync uses incremental CreatedDate filter for subsequent pulls
+- [x] **HIST-03**: Records ordered by OpportunityId, CreatedDate ASC for stage velocity derivation
 
 ### Task Sync (Conditional)
 
@@ -75,9 +75,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPPT-03 | Phase 7 | Complete |
 | OPPT-04 | Phase 7 | Complete |
 | OPPT-05 | Phase 7 | Complete |
-| HIST-01 | Phase 8 | Pending |
-| HIST-02 | Phase 8 | Pending |
-| HIST-03 | Phase 8 | Pending |
+| HIST-01 | Phase 8 | Complete |
+| HIST-02 | Phase 8 | Complete |
+| HIST-03 | Phase 8 | Complete |
 | TASK-01 | Phase 9 | Pending |
 | TASK-02 | Phase 9 | Pending |
 | TASK-03 | Phase 9 | Pending |

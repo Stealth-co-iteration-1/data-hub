@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 07-opportunity-sync-01-PLAN.md
-last_updated: "2026-03-20T12:09:56.086Z"
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-20T12:21:49.350Z"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 3
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-20
-**Status**: Phase 07 complete — Salesforce Opportunity sync (fetch-opportunities.ts) ready; OPPT-01 through OPPT-05 satisfied
+**Status**: Phase 08 complete — Salesforce OpportunityHistory sync (fetch-opportunity-history.ts) ready; HIST-01 through HIST-03 satisfied
 
 ---
 
@@ -33,8 +33,8 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: 07 (opportunity-sync) — COMPLETE
-Plan: 1 of 1 (done)
+Phase: 08 (opportunityhistory-sync) — COMPLETE
+Plan: 1 of 1 (complete)
 
 ## Session Log
 
@@ -53,6 +53,7 @@ Plan: 1 of 1 (done)
 | Blockers encountered | 0 |
 | Phase 06-salesforce-sync-infrastructure P01 | 12 | 3 tasks | 3 files |
 | Phase 07 P01 | 205 | 3 tasks | 5 files |
+| Phase 08 P01 | 74 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Plan: 1 of 1 (done)
 | id aliasing: lowercase id added to opportunitySchema | Nango ZodModel requires id: ZodString as record key; Salesforce returns Id so we spread and alias at parse time | 07 |
 | Custom buildOpportunityQuery replaces buildQuery | buildQuery does not support relationship field traversal (Account.Name, subqueries) | 07 |
 | nango.lastSyncDate is a property not a method | Nango SDK exposes lastSyncDate as Date or undefined on NangoSyncBase, not a callable function | 07 |
+| Use CreatedDate for incremental cursor in OpportunityHistory | History records are immutable — no LastModifiedDate changes after creation; CreatedDate is the correct cursor | 08 |
+| buildOpportunityHistoryQuery builds SOQL manually | buildQuery utility doesn't support ORDER BY; ORDER BY OpportunityId, CreatedDate ASC is required for velocity derivation | 08 |
 
 ### Open Questions
 
@@ -96,20 +99,18 @@ Plan: 1 of 1 (done)
 
 ## Session Continuity
 
-**Last session:** 2026-03-20T12:06:39.147Z
-**Stopped at:** Completed 07-opportunity-sync-01-PLAN.md
+**Last session:** 2026-03-20T12:21:49.348Z
+**Stopped at:** Completed 08-01-PLAN.md
 
 ### Next Actions
 
-1. Execute Phase 08 (OpportunityHistory sync)
-2. Execute Phase 09 (Tasks and Events sync)
+1. Execute Phase 09 (Tasks and Events sync)
 
 ### Files Modified This Session
 
-- nango-integrations/salesforce/utils.ts (created)
-- nango-integrations/salesforce/models.ts (created)
-- nango-integrations/salesforce/types.ts (created)
-- .planning/phases/06-salesforce-sync-infrastructure/06-01-SUMMARY.md (created)
+- nango-integrations/salesforce/syncs/fetch-opportunity-history.ts (created)
+- nango-integrations/index.ts (updated)
+- .planning/phases/08-opportunityhistory-sync/08-01-SUMMARY.md (created)
 - .planning/STATE.md (updated)
 - .planning/ROADMAP.md (updated)
 
