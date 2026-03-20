@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05-02 adapter query() implementation
-last_updated: "2026-03-20T00:05:41.368Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-20T00:06:33.991Z"
 progress:
   total_phases: 2
   completed_phases: 1
@@ -42,6 +42,7 @@ Plan: 3 of 3
 **v0.1.0 velocity:** Plan 04-01 completed in 2 min (3 tasks, 5 files, 87 tests)
 **v0.1.0 velocity:** Plan 04-02 completed in 2 min (3 tasks, 3 files, 339 LOC)
 **v0.1.0 velocity:** Plan 04-03 completed in 4 min (6 tasks, 8 files, 102 tests)
+**v0.1.0 velocity:** Plan 05-01 completed in 2 min (4 tasks, 9 files, 13 tests)
 **v0.1.0 velocity:** Plan 05-02 completed in 2 min (4 tasks, 4 files, 12 tests)
 
 ---
@@ -67,6 +68,11 @@ Plan: 3 of 3
 - Phase 4: PostgreSQL Backend (PGRS-01-03, CONF-01-02)
 - Phase 5: Query Capability (QURY-01-06)
 - Rationale: Natural split at adapter boundary — backend wiring before query feature can use it
+
+**2026-03-19**: QueryData has no offset field - pagination deferred, port signature lacks offset parameter
+
+- QueryHandler enforces MAX_QUERY_LIMIT=1000 unconditionally via min(query.limit, MAX_QUERY_LIMIT)
+- FakeDataRepository.query() returns system fields (id, connection_id, model, created_at) plus data
 
 **2026-03-20**: V1 query filtering: connection_id column only, silent ignore of other keys
 
@@ -100,8 +106,8 @@ None (asyncpg added in Plan 04-01)
 
 ## Session Continuity
 
-Last session: 2026-03-20T00:05:17.646Z
-Stopped at: Completed 05-02 adapter query() implementation
+Last session: 2026-03-20T00:06:33.988Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
 
 **Next step**: Phase 5 Plan 02 complete. Ready to start Plan 03 (HTTP query endpoint)

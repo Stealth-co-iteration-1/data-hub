@@ -20,9 +20,9 @@ Requirements for v0.1.0 milestone: Production Storage & Query.
 
 ### Query
 
-- [ ] **QURY-01**: DataRepository.query() read port accepts parameterized SQL
-- [ ] **QURY-02**: QueryData query in kernel follows same pattern as AddDataCommand (CQRS)
-- [ ] **QURY-03**: Query handler executes parameterized SQL via repository port
+- [x] **QURY-01**: DataRepository.query() read port accepts parameterized SQL
+- [x] **QURY-02**: QueryData query in kernel follows same pattern as AddDataCommand (CQRS)
+- [x] **QURY-03**: Query handler executes parameterized SQL via repository port
 - [x] **QURY-04**: Both SQLite and PostgreSQL adapters implement query() method
 - [ ] **QURY-05**: Query HTTP endpoint exposes query capability via API (POST /query)
 - [ ] **QURY-06**: Query parameters use bindparams only — no raw SQL from callers
@@ -76,9 +76,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PGRS-03 | Phase 4 | Complete |
 | CONF-01 | Phase 4 | Complete |
 | CONF-02 | Phase 4 | Complete |
-| QURY-01 | Phase 5 | Pending |
-| QURY-02 | Phase 5 | Pending |
-| QURY-03 | Phase 5 | Pending |
+| QURY-01 | Phase 5 | Complete |
+| QURY-02 | Phase 5 | Complete |
+| QURY-03 | Phase 5 | Complete |
 | QURY-04 | Phase 5 | Complete |
 | QURY-05 | Phase 5 | Pending |
 | QURY-06 | Phase 5 | Pending |
