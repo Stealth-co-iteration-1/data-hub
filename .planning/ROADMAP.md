@@ -12,7 +12,7 @@ Create Nango sync scripts that pull Salesforce revenue data per the Engineering 
 ## Phases
 
 - [x] **Phase 6: Salesforce Sync Infrastructure** - Shared patterns, Zod schemas, pagination for all Salesforce syncs (completed 2026-03-20)
-- [ ] **Phase 7: Opportunity Sync** - Primary dataset with Account, Owner, and nested ContactRoles
+- [x] **Phase 7: Opportunity Sync** - Primary dataset with Account, Owner, and nested ContactRoles (completed 2026-03-20)
 - [ ] **Phase 8: OpportunityHistory Sync** - Stage change tracking for velocity analysis
 - [ ] **Phase 9: Activity Syncs** - Tasks (emails/calls) and Events (meetings) with join keys
 
@@ -41,7 +41,7 @@ Plans:
   3. Owner fields (Name, Email) denormalized on each Opportunity
   4. OpportunityContactRoles with Contact.Email nested as array for join key resolution
   5. Incremental sync pulls only records modified since last sync via LastModifiedDate
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 07-01-PLAN.md - Opportunity sync with Account, Owner, and OpportunityContactRoles relationships
 
@@ -72,7 +72,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. Salesforce Sync Infrastructure | 1/1 | Complete   | 2026-03-20 |
-| 7. Opportunity Sync | 0/1 | Planned | - |
+| 7. Opportunity Sync | 1/1 | Complete   | 2026-03-20 |
 | 8. OpportunityHistory Sync | 0/? | Not started | - |
 | 9. Activity Syncs | 0/? | Not started | - |
 

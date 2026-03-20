@@ -9,11 +9,11 @@ Requirements for v0.2.0 milestone: Salesforce Revenue Reporting Syncs.
 
 ### Opportunity Sync
 
-- [ ] **OPPT-01**: Nango sync pulls Opportunity records with all spec fields (Id, Name, Amount, StageName, IsClosed, IsWon, CloseDate, CreatedDate, LastModifiedDate, ForecastCategoryName, Probability, Type, LeadSource, OwnerId)
-- [ ] **OPPT-02**: Opportunity sync includes parent Account fields (Account.Name, Account.Industry, Account.AnnualRevenue)
-- [ ] **OPPT-03**: Opportunity sync includes Owner fields (Owner.Name, Owner.Email)
-- [ ] **OPPT-04**: Opportunity sync includes nested OpportunityContactRoles with Contact.Email as join key
-- [ ] **OPPT-05**: Sync supports incremental pulls via LastModifiedDate filter
+- [x] **OPPT-01**: Nango sync pulls Opportunity records with all spec fields (Id, Name, Amount, StageName, IsClosed, IsWon, CloseDate, CreatedDate, LastModifiedDate, ForecastCategoryName, Probability, Type, LeadSource, OwnerId)
+- [x] **OPPT-02**: Opportunity sync includes parent Account fields (Account.Name, Account.Industry, Account.AnnualRevenue)
+- [x] **OPPT-03**: Opportunity sync includes Owner fields (Owner.Name, Owner.Email)
+- [x] **OPPT-04**: Opportunity sync includes nested OpportunityContactRoles with Contact.Email as join key
+- [x] **OPPT-05**: Sync supports incremental pulls via LastModifiedDate filter
 
 ### OpportunityHistory Sync
 
@@ -70,11 +70,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPPT-01 | Phase 7 | Pending |
-| OPPT-02 | Phase 7 | Pending |
-| OPPT-03 | Phase 7 | Pending |
-| OPPT-04 | Phase 7 | Pending |
-| OPPT-05 | Phase 7 | Pending |
+| OPPT-01 | Phase 7 | Complete |
+| OPPT-02 | Phase 7 | Complete |
+| OPPT-03 | Phase 7 | Complete |
+| OPPT-04 | Phase 7 | Complete |
+| OPPT-05 | Phase 7 | Complete |
 | HIST-01 | Phase 8 | Pending |
 | HIST-02 | Phase 8 | Pending |
 | HIST-03 | Phase 8 | Pending |

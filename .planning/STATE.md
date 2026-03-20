@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 06-salesforce-sync-infrastructure-01-PLAN.md
-last_updated: "2026-03-20T01:19:29.044Z"
+stopped_at: Completed 07-opportunity-sync-01-PLAN.md
+last_updated: "2026-03-20T12:06:39.150Z"
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 1
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 2
 ---
 
 # Project State: data-hub
 
-**Last updated**: 2026-03-19
-**Status**: Phase 06 complete — shared Salesforce sync infrastructure ready for Phases 7-9
+**Last updated**: 2026-03-20
+**Status**: Phase 07 complete — Salesforce Opportunity sync (fetch-opportunities.ts) ready; OPPT-01 through OPPT-05 satisfied
 
 ---
 
@@ -33,8 +33,8 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: 06 (salesforce-sync-infrastructure) — COMPLETE
-Plan: 1 of 1 (complete)
+Phase: 07 (opportunity-sync) — COMPLETE
+Plan: 1 of 1 (done)
 
 ## Session Log
 
@@ -52,6 +52,7 @@ Plan: 1 of 1 (complete)
 | Requirements satisfied | 0/17 |
 | Blockers encountered | 0 |
 | Phase 06-salesforce-sync-infrastructure P01 | 12 | 3 tasks | 3 files |
+| Phase 07 P01 | 205 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Plan: 1 of 1 (complete)
 | z.union for nullables (not z.nullable) | Preserves null semantics with no coercion — per CONTEXT.md decision | 06 |
 | types.ts re-exports all models.ts schemas | Single import point for downstream syncs in Phases 7-9 | 06 |
 | buildQuery uses Date.toISOString() for LastModifiedDate | Salesforce accepts ISO 8601 in SOQL WHERE clauses | 06 |
+| id aliasing: lowercase id added to opportunitySchema | Nango ZodModel requires id: ZodString as record key; Salesforce returns Id so we spread and alias at parse time | 07 |
+| Custom buildOpportunityQuery replaces buildQuery | buildQuery does not support relationship field traversal (Account.Name, subqueries) | 07 |
+| nango.lastSyncDate is a property not a method | Nango SDK exposes lastSyncDate as Date or undefined on NangoSyncBase, not a callable function | 07 |
 
 ### Open Questions
 
@@ -92,13 +96,13 @@ Plan: 1 of 1 (complete)
 
 ## Session Continuity
 
-**Last session:** 2026-03-20T01:16:43.636Z
-**Stopped at:** Completed 06-salesforce-sync-infrastructure-01-PLAN.md
+**Last session:** 2026-03-20T12:06:39.147Z
+**Stopped at:** Completed 07-opportunity-sync-01-PLAN.md
 
 ### Next Actions
 
-1. Plan and execute Phase 07 (Salesforce Opportunities sync)
-2. Phases 7-9 can be planned in parallel now that Phase 06 foundation is complete
+1. Execute Phase 08 (OpportunityHistory sync)
+2. Execute Phase 09 (Tasks and Events sync)
 
 ### Files Modified This Session
 
