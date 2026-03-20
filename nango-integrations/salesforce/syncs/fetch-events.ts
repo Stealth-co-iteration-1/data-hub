@@ -43,8 +43,7 @@ const eventSchema = z.object({
     WhatId: z.union([sfId, z.null()]),    // Account, Opportunity, etc.
     OwnerId: sfId,
 
-    // Activity type
-    Type: sfNullableString,
+    // Activity subtype (Note: Event does NOT have a Type field — only Task does)
     EventSubtype: sfNullableString,
 
     // Relationship objects
@@ -58,9 +57,10 @@ type Event = z.infer<typeof eventSchema>;
 // SOQL field list (custom — buildQuery doesn't support relationship traversal)
 // ---------------------------------------------------------------------------
 
+// Note: Event does NOT have a Type field — only Task does
 const EVENT_SOQL_FIELDS = `
     Id, Subject, StartDateTime, EndDateTime, DurationInMinutes, ActivityDate, CreatedDate,
-    WhoId, WhatId, OwnerId, Type, EventSubtype,
+    WhoId, WhatId, OwnerId, EventSubtype,
     Who.Email, Owner.Name, Owner.Email
 `.replace(/\s+/g, ' ').trim();
 
