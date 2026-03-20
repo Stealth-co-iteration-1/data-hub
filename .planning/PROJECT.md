@@ -32,7 +32,21 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Active
 
-(None — ready for next milestone)
+- [ ] Nango syncs for Salesforce revenue reporting data
+- [ ] Opportunity sync with nested OpportunityContactRoles
+- [ ] OpportunityHistory sync for stage tracking
+- [ ] Task sync for emails and calls
+- [ ] Event sync for meetings
+
+## Current Milestone: v0.2.0 Salesforce Revenue Reporting Syncs
+
+**Goal:** Create Nango sync scripts that pull Salesforce revenue data per the Engineering Data Spec and forward to data-hub webhook.
+
+**Target syncs:**
+- Opportunities (with Account + OpportunityContactRoles)
+- OpportunityHistory (stage change tracking)
+- Tasks (emails, calls — conditional on tool sync)
+- Events (meetings — conditional on tool sync)
 
 ### Out of Scope
 
@@ -107,4 +121,4 @@ Data from connected integrations flows reliably into the platform with strict va
 - Health check, Prometheus metrics, structured logging
 
 ---
-*Last updated: 2026-03-20 after v0.1.0 milestone shipped*
+*Last updated: 2026-03-20 after v0.2.0 milestone started*

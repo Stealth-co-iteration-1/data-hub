@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core Value**: Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-**Current Focus**: Between milestones — ready for `/gsd:new-milestone`
+**Current Focus**: v0.2.0 Salesforce Revenue Reporting Syncs — defining requirements
 
 **Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern
 
