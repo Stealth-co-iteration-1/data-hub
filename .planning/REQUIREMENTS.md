@@ -24,8 +24,8 @@ Requirements for v0.1.0 milestone: Production Storage & Query.
 - [x] **QURY-02**: QueryData query in kernel follows same pattern as AddDataCommand (CQRS)
 - [x] **QURY-03**: Query handler executes parameterized SQL via repository port
 - [x] **QURY-04**: Both SQLite and PostgreSQL adapters implement query() method
-- [ ] **QURY-05**: Query HTTP endpoint exposes query capability via API (POST /query)
-- [ ] **QURY-06**: Query parameters use bindparams only — no raw SQL from callers
+- [x] **QURY-05**: Query HTTP endpoint exposes query capability via API (POST /query)
+- [x] **QURY-06**: Query parameters use bindparams only — no raw SQL from callers
 
 ## Future Requirements
 
@@ -80,8 +80,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QURY-02 | Phase 5 | Complete |
 | QURY-03 | Phase 5 | Complete |
 | QURY-04 | Phase 5 | Complete |
-| QURY-05 | Phase 5 | Pending |
-| QURY-06 | Phase 5 | Pending |
+| QURY-05 | Phase 5 | Complete |
+| QURY-06 | Phase 5 | Complete |
 
 **Coverage:**
 - v0.1.0 requirements: 11 total
