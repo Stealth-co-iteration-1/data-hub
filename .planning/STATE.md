@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.2
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-20T12:24:17.506Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-03-20T12:43:57.433Z"
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 3
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 5
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-20
-**Status**: Phase 08 complete — Salesforce OpportunityHistory sync (fetch-opportunity-history.ts) ready; HIST-01 through HIST-03 satisfied
+**Status**: Phase 09 complete — Salesforce Task sync (fetch-tasks.ts) and Event sync (fetch-events.ts) ready; TASK-01 through TASK-03 and EVNT-01 through EVNT-03 satisfied
 
 ---
 
@@ -33,8 +33,8 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: 08 (opportunityhistory-sync) — COMPLETE
-Plan: 1 of 1 (complete)
+Phase: 09 (activity-syncs) — COMPLETE
+Plan: 2 of 2 (all plans complete)
 
 ## Session Log
 
@@ -54,6 +54,8 @@ Plan: 1 of 1 (complete)
 | Phase 06-salesforce-sync-infrastructure P01 | 12 | 3 tasks | 3 files |
 | Phase 07 P01 | 205 | 3 tasks | 5 files |
 | Phase 08 P01 | 74 | 2 tasks | 2 files |
+| Phase 09 P02 | 2 | 2 tasks | 2 files |
+| Phase 09-activity-syncs P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -69,6 +71,10 @@ Plan: 1 of 1 (complete)
 | nango.lastSyncDate is a property not a method | Nango SDK exposes lastSyncDate as Date or undefined on NangoSyncBase, not a callable function | 07 |
 | Use CreatedDate for incremental cursor in OpportunityHistory | History records are immutable — no LastModifiedDate changes after creation; CreatedDate is the correct cursor | 08 |
 | buildOpportunityHistoryQuery builds SOQL manually | buildQuery utility doesn't support ORDER BY; ORDER BY OpportunityId, CreatedDate ASC is required for velocity derivation | 08 |
+| StartDateTime >= (not >) for Event incremental filter | DateTime boundary — use >= to include events starting at exact sync timestamp, avoiding missed records at boundary | 09 |
+| whoSchema captures only Email field for Event Who relationship | Sufficient for downstream join key resolution without over-fetching Contact/Lead fields | 09 |
+| WhoId and WhatId typed as sfId | null (not sfNullableString) | Preserves 18-char Salesforce ID length constraint while allowing null for Events without linked person/record | 09 |
+| ActivityDate filter uses >= and date-only ISO slice for Tasks | ActivityDate is a Salesforce DATE type (YYYY-MM-DD); must strip time component from lastSyncDate with split('T')[0] | 09 |
 
 ### Open Questions
 
@@ -99,18 +105,18 @@ Plan: 1 of 1 (complete)
 
 ## Session Continuity
 
-**Last session:** 2026-03-20T12:21:49.348Z
-**Stopped at:** Completed 08-01-PLAN.md
+**Last session:** 2026-03-20T12:43:57.431Z
+**Stopped at:** Completed 09-02-PLAN.md
 
 ### Next Actions
 
-1. Execute Phase 09 (Tasks and Events sync)
+1. Phase 09 complete — all 4 phases of v0.2.0 Salesforce Revenue Reporting Syncs done
 
 ### Files Modified This Session
 
-- nango-integrations/salesforce/syncs/fetch-opportunity-history.ts (created)
+- nango-integrations/salesforce/syncs/fetch-events.ts (created)
 - nango-integrations/index.ts (updated)
-- .planning/phases/08-opportunityhistory-sync/08-01-SUMMARY.md (created)
+- .planning/phases/09-activity-syncs/09-02-SUMMARY.md (created)
 - .planning/STATE.md (updated)
 - .planning/ROADMAP.md (updated)
 

@@ -29,9 +29,9 @@ Requirements for v0.2.0 milestone: Salesforce Revenue Reporting Syncs.
 
 ### Event Sync (Conditional)
 
-- [ ] **EVNT-01**: Nango sync pulls Event records with spec fields (Id, Subject, StartDateTime, EndDateTime, DurationInMinutes, ActivityDate, CreatedDate, WhoId, Who.Email, WhatId, OwnerId, Owner.Email, Type, EventSubtype)
-- [ ] **EVNT-02**: Sync filters by StartDateTime range for manageable result sets
-- [ ] **EVNT-03**: WhoId/WhatId preserved for downstream join resolution
+- [x] **EVNT-01**: Nango sync pulls Event records with spec fields (Id, Subject, StartDateTime, EndDateTime, DurationInMinutes, ActivityDate, CreatedDate, WhoId, Who.Email, WhatId, OwnerId, Owner.Email, Type, EventSubtype)
+- [x] **EVNT-02**: Sync filters by StartDateTime range for manageable result sets
+- [x] **EVNT-03**: WhoId/WhatId preserved for downstream join resolution
 
 ### Infrastructure
 
@@ -81,9 +81,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TASK-01 | Phase 9 | Pending |
 | TASK-02 | Phase 9 | Pending |
 | TASK-03 | Phase 9 | Pending |
-| EVNT-01 | Phase 9 | Pending |
-| EVNT-02 | Phase 9 | Pending |
-| EVNT-03 | Phase 9 | Pending |
+| EVNT-01 | Phase 9 | Complete |
+| EVNT-02 | Phase 9 | Complete |
+| EVNT-03 | Phase 9 | Complete |
 | INFR-01 | Phase 6 | Complete |
 | INFR-02 | Phase 6 | Complete |
 | INFR-03 | Phase 6 | Complete |
