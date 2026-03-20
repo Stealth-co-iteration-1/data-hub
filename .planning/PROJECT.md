@@ -24,17 +24,15 @@ Data from connected integrations flows reliably into the platform with strict va
 - [x] Health check endpoint returns service status — *Validated in Phase 3: Webhook Transport & Observability*
 - [x] Structured logging with correlation IDs — *Validated in Phase 3: Webhook Transport & Observability*
 
-### Active
-
-(None — v0.1.0 milestone complete)
-
-### Validated (v0.1.0)
-
 - [x] PostgreSQL adapter with asyncpg driver — *Validated in Phase 4: PostgreSQL Backend*
 - [x] Configurable storage backend (sqlite/postgres via ENV) — *Validated in Phase 4: PostgreSQL Backend*
 - [x] QueryData command with SQL-based interface — *Validated in Phase 5: Query Capability*
 - [x] DataRepository.query() read port — *Validated in Phase 5: Query Capability*
 - [x] Query HTTP endpoint — *Validated in Phase 5: Query Capability*
+
+### Active
+
+(None — ready for next milestone)
 
 ### Out of Scope
 
@@ -94,20 +92,19 @@ Data from connected integrations flows reliably into the platform with strict va
 - InMemoryEventPublisher stores events that are never consumed
 - session.py helpers unused in production (app.py reimplements inline)
 
-## Current Milestone: v0.1.0 Production Storage & Query — COMPLETE
+## Current State (v0.1.0 Shipped)
 
-**Goal:** Production-ready storage with configurable backends (SQLite/PostgreSQL) and SQL-based query capability
+**Shipped:** 2026-03-20
+**Codebase:** ~5,948 LOC Python
+**Tests:** 134 passing
+**Tech stack:** Python 3.12+, FastAPI, SQLAlchemy 2.0 async, asyncpg, structlog, prometheus_client, Pydantic, Alembic
 
-**Delivered:**
-- PostgreSQL adapter (asyncpg) alongside existing SQLite — Phase 4
-- ENV-based backend configuration via DATABASE_URL scheme detection — Phase 4
-- QueryData command with parameterized SQL in kernel — Phase 5
-- DataRepository.query() read port with connection_id filtering — Phase 5
-- POST /query/{model} HTTP endpoint with injection prevention — Phase 5
-
-**Stats:**
-- 127 tests passing (15 PostgreSQL tests skip without TEST_POSTGRES_URL)
-- 5 phases complete across v0.0.1 + v0.1.0
+**Capabilities:**
+- Webhook ingestion with HMAC verification (POST /webhooks/nango)
+- Schema validation with structured error reporting
+- SQLite or PostgreSQL persistence via DATABASE_URL
+- Query API (POST /query/{model}) with injection prevention
+- Health check, Prometheus metrics, structured logging
 
 ---
-*Last updated: 2026-03-20 after Phase 5 (Query Capability) completed — v0.1.0 milestone complete*
+*Last updated: 2026-03-20 after v0.1.0 milestone shipped*
