@@ -2,8 +2,9 @@
 
 This module contains:
 - Commands: State-changing operations (AddDataCommand)
+- Queries: Read-only operations (QueryData)
 - Events: Domain events (DataAddedEvent)
-- Handlers: Command/query handlers (AddDataHandler)
+- Handlers: Command/query handlers (AddDataHandler, QueryHandler)
 - Ports: Abstract interfaces for adapters
 - Exceptions: Domain-specific errors
 
@@ -19,17 +20,23 @@ from .exceptions import (
     SchemaNotFoundError,
     ValidationError,
 )
-from .handlers import AddDataHandler
+from .handlers import AddDataHandler, QueryHandler
 from .ports import DataRepository, EventPublisher, SchemaRegistry
+from .queries import DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT, QueryData
 from .validators import SchemaValidator
 
 __all__ = [
     # Commands
     "AddDataCommand",
+    # Queries
+    "QueryData",
+    "DEFAULT_QUERY_LIMIT",
+    "MAX_QUERY_LIMIT",
     # Events
     "DataAddedEvent",
     # Handlers
     "AddDataHandler",
+    "QueryHandler",
     # Domain
     "CorrelationContext",
     "RecordMetadata",
