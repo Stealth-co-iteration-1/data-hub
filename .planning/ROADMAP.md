@@ -55,7 +55,7 @@ Plans:
   3. Records ordered by OpportunityId, CreatedDate ASC enabling stage velocity derivation
 **Plans:** 1/1 plans complete
 Plans:
-- [ ] 08-01-PLAN.md - OpportunityHistory sync with CreatedDate incremental filter and velocity ordering
+- [x] 08-01-PLAN.md - OpportunityHistory sync with CreatedDate incremental filter and velocity ordering
 
 ### Phase 9: Activity Syncs
 **Goal**: Sales activities (emails, calls, meetings) flowing with relationship keys preserved
@@ -67,7 +67,10 @@ Plans:
   3. Both syncs filter by date range (ActivityDate/StartDateTime) for manageable result sets
   4. WhoId/WhatId preserved on both record types for downstream join resolution
   5. Owner.Email included on both record types for rep attribution
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 09-01-PLAN.md - Task sync with Who/Owner relationships and ActivityDate filter
+- [ ] 09-02-PLAN.md - Event sync with Who/Owner relationships and StartDateTime filter
 
 ## Progress
 
@@ -76,7 +79,7 @@ Plans:
 | 6. Salesforce Sync Infrastructure | 1/1 | Complete   | 2026-03-20 |
 | 7. Opportunity Sync | 1/1 | Complete   | 2026-03-20 |
 | 8. OpportunityHistory Sync | 1/1 | Complete   | 2026-03-20 |
-| 9. Activity Syncs | 0/? | Not started | - |
+| 9. Activity Syncs | 0/2 | Planned | - |
 
 ## Coverage
 
