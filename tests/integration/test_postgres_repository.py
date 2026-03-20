@@ -124,42 +124,87 @@ class TestPostgresDataRepository:
             assert result.scalar() == 1
 
 
-class TestPostgresDataRepositoryQuery:
-    """Tests for PostgresDataRepository.query() method."""
+async def test_query_returns_all_records_for_model(pg_repository: PostgresDataRepository) -> None:
+    """Query without filters returns all records for model."""
+    await pg_repository.add("contacts", "conn1", {"name": "Alice"})
+    await pg_repository.add("contacts", "conn2", {"name": "Bob"})
+    await pg_repository.add("orders", "conn1", {"amount": 100})  # Different model
 
-    async def test_query_returns_matching_records(self, pg_repository):
-        """Query returns records matching model."""
-        await pg_repository.add("contacts", "conn", {"name": "Alice"})
-        await pg_repository.add("contacts", "conn", {"name": "Bob"})
-        await pg_repository.add("products", "conn", {"name": "Widget"})
+    results = await pg_repository.query("contacts")
 
-        results = await pg_repository.query("contacts")
+    assert len(results) == 2
+    names = [r["name"] for r in results]
+    assert "Alice" in names
+    assert "Bob" in names
 
-        assert len(results) == 2
-        names = [r["name"] for r in results]
-        assert "Alice" in names
-        assert "Bob" in names
 
-    async def test_query_with_filters(self, pg_repository):
-        """Query filters by column value."""
-        await pg_repository.add("contacts", "conn", {"name": "Alice", "city": "NYC"})
-        await pg_repository.add("contacts", "conn", {"name": "Bob", "city": "LA"})
+async def test_query_with_connection_id_filter(pg_repository: PostgresDataRepository) -> None:
+    """Query with connection_id filter returns only matching records."""
+    await pg_repository.add("contacts", "conn1", {"name": "Alice"})
+    await pg_repository.add("contacts", "conn2", {"name": "Bob"})
+    await pg_repository.add("contacts", "conn1", {"name": "Carol"})
 
-        results = await pg_repository.query("contacts", filters={"city": "NYC"})
+    results = await pg_repository.query("contacts", filters={"connection_id": "conn1"})
 
-        assert len(results) == 1
-        assert results[0]["name"] == "Alice"
+    assert len(results) == 2
+    names = [r["name"] for r in results]
+    assert "Alice" in names
+    assert "Carol" in names
+    assert "Bob" not in names
 
-    async def test_query_respects_limit(self, pg_repository):
-        """Query returns at most limit records."""
-        for i in range(10):
-            await pg_repository.add("items", "conn", {"index": i})
 
-        results = await pg_repository.query("items", limit=3)
+async def test_query_respects_limit(pg_repository: PostgresDataRepository) -> None:
+    """Query respects limit parameter."""
+    for i in range(10):
+        await pg_repository.add("contacts", f"conn{i}", {"name": f"User{i}"})
 
-        assert len(results) == 3
+    results = await pg_repository.query("contacts", limit=5)
 
-    async def test_query_empty_model_returns_empty_list(self, pg_repository):
-        """Query on model with no records returns empty list."""
-        results = await pg_repository.query("nonexistent_model")
-        assert results == []
+    assert len(results) == 5
+
+
+async def test_query_returns_empty_when_no_matches(pg_repository: PostgresDataRepository) -> None:
+    """Query returns empty list when no records match."""
+    await pg_repository.add("contacts", "conn1", {"name": "Alice"})
+
+    results = await pg_repository.query("contacts", filters={"connection_id": "nonexistent"})
+
+    assert results == []
+
+
+async def test_query_returns_system_fields(pg_repository: PostgresDataRepository) -> None:
+    """Query returns system fields (id, connection_id, model, created_at) alongside data.
+
+    Per CONTEXT.md locked decision: "Include system fields in results"
+    """
+    await pg_repository.add("contacts", "conn1", {"name": "Alice", "email": "alice@example.com"})
+
+    results = await pg_repository.query("contacts")
+
+    assert len(results) == 1
+    record = results[0]
+    # System fields must be present
+    assert "id" in record
+    assert "connection_id" in record
+    assert record["connection_id"] == "conn1"
+    assert "model" in record
+    assert record["model"] == "contacts"
+    assert "created_at" in record
+    # Data payload fields also present
+    assert record["name"] == "Alice"
+    assert record["email"] == "alice@example.com"
+
+
+async def test_query_ignores_non_connection_id_filters(pg_repository: PostgresDataRepository) -> None:
+    """Query ignores filters other than connection_id (no JSON field filtering in v1).
+
+    Per CONTEXT.md locked decision: "no filtering on raw JSON data fields"
+    """
+    await pg_repository.add("contacts", "conn1", {"name": "Alice", "status": "active"})
+    await pg_repository.add("contacts", "conn2", {"name": "Bob", "status": "inactive"})
+
+    # Try to filter on 'status' (a JSON field) - should be ignored
+    results = await pg_repository.query("contacts", filters={"status": "active"})
+
+    # All records returned because JSON field filtering is not supported
+    assert len(results) == 2
