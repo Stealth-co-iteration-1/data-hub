@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.0
 milestone_name: milestone
 status: unknown
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-19T18:18:47.481Z"
+stopped_at: Completed 05-02 adapter query() implementation
+last_updated: "2026-03-20T00:05:41.368Z"
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State: data-hub
 
-**Last updated**: 2026-03-19
-**Status**: Phase 4 complete — All 3 plans done
+**Last updated**: 2026-03-20
+**Status**: Phase 5 executing — 2 of 3 plans done
 
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core Value**: Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-**Current Focus**: v0.1.0 Phase 4 — PostgreSQL Backend (executing)
+**Current Focus**: v0.1.0 Phase 5 — Query Capability (executing)
 
 **Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern
 
@@ -33,8 +33,8 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 04 (postgresql-backend) — COMPLETE
-Plan: 3 of 3 (All plans complete)
+Phase: 05 (query-capability) — EXECUTING
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -42,6 +42,7 @@ Plan: 3 of 3 (All plans complete)
 **v0.1.0 velocity:** Plan 04-01 completed in 2 min (3 tasks, 5 files, 87 tests)
 **v0.1.0 velocity:** Plan 04-02 completed in 2 min (3 tasks, 3 files, 339 LOC)
 **v0.1.0 velocity:** Plan 04-03 completed in 4 min (6 tasks, 8 files, 102 tests)
+**v0.1.0 velocity:** Plan 05-02 completed in 2 min (4 tasks, 4 files, 12 tests)
 
 ---
 
@@ -66,6 +67,12 @@ Plan: 3 of 3 (All plans complete)
 - Phase 4: PostgreSQL Backend (PGRS-01-03, CONF-01-02)
 - Phase 5: Query Capability (QURY-01-06)
 - Rationale: Natural split at adapter boundary — backend wiring before query feature can use it
+
+**2026-03-20**: V1 query filtering: connection_id column only, silent ignore of other keys
+
+- Both SQLite and PostgreSQL adapters implement identical query() behavior
+- System fields (id, connection_id, model, created_at) always included in query results alongside data payload
+- Non-connection_id filter keys silently ignored — matches locked decision without breaking callers
 
 **2026-03-18**: Protocol extension is critical-path blocker
 
@@ -93,14 +100,14 @@ None (asyncpg added in Plan 04-01)
 
 ## Session Continuity
 
-Last session: 2026-03-19T18:18:47.479Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-query-capability/05-CONTEXT.md
+Last session: 2026-03-20T00:05:17.646Z
+Stopped at: Completed 05-02 adapter query() implementation
+Resume file: None
 
-**Next step**: Phase 4 complete. Ready to start Phase 5 (Query Capability)
+**Next step**: Phase 5 Plan 02 complete. Ready to start Plan 03 (HTTP query endpoint)
 
-**Phase 4 Critical Pitfalls Resolved:**
+**Phase 5 Plan 02 complete:**
 
-1. dependencies.py now uses request.app.state.repository (factory-created)
-2. migrations/env.py now reads DATABASE_URL from environment first
-3. PostgresDataRepository uses sqlalchemy.dialects.postgresql.insert
+- Both adapters' query() methods now filter only on connection_id (column-only, per locked decision)
+- System fields (id, connection_id, model, created_at) returned in all query results
+- 6 SQLite + 6 PostgreSQL integration tests added

@@ -93,4 +93,4 @@ Plans:
 | 2. Persistence & Data Flow | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 3. Webhook Transport & Observability | v0.0.1 | 3/3 | Complete | 2026-03-18 |
 | 4. PostgreSQL Backend | v0.1.0 | 3/3 | Complete | 2026-03-19 |
-| 5. Query Capability | v0.1.0 | 0/3 | Not started | - |
+| 5. Query Capability | 2/3 | In Progress|  | - |
