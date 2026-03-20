@@ -365,6 +365,321 @@
     },
     "SyncMetadata_salesforce_fetchopportunities": {
       "type": "null"
+    },
+    "OpportunityHistory": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "OpportunityId": {
+          "type": "string"
+        },
+        "StageName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Amount": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "CloseDate": {
+          "type": "string"
+        },
+        "Probability": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "CreatedById": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "OpportunityId",
+        "StageName",
+        "Amount",
+        "CloseDate",
+        "Probability",
+        "CreatedDate",
+        "CreatedById"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchopportunityhistory": {
+      "type": "null"
+    },
+    "Task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "Subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ActivityDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "WhoId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "WhatId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OwnerId": {
+          "type": "string"
+        },
+        "TaskSubtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CallType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CallDurationInSeconds": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "CallDisposition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Who": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Email": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Email"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Owner": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "Name",
+            "Email"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "Subject",
+        "Status",
+        "ActivityDate",
+        "CreatedDate",
+        "WhoId",
+        "WhatId",
+        "OwnerId",
+        "TaskSubtype",
+        "CallType",
+        "CallDurationInSeconds",
+        "CallDisposition",
+        "Who",
+        "Owner"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchtasks": {
+      "type": "null"
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "Subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "StartDateTime": {
+          "type": "string"
+        },
+        "EndDateTime": {
+          "type": "string"
+        },
+        "DurationInMinutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ActivityDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "WhoId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "WhatId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OwnerId": {
+          "type": "string"
+        },
+        "EventSubtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Who": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Email": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Email"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Owner": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "Name",
+            "Email"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "Subject",
+        "StartDateTime",
+        "EndDateTime",
+        "DurationInMinutes",
+        "ActivityDate",
+        "CreatedDate",
+        "WhoId",
+        "WhatId",
+        "OwnerId",
+        "EventSubtype",
+        "Who",
+        "Owner"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchevents": {
+      "type": "null"
     }
   },
   "$comment": "This file was generated by Nango (v0.69.45)"

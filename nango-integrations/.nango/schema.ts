@@ -85,3 +85,58 @@ export interface Opportunity {
 };
 
 export type SyncMetadata_salesforce_fetchopportunities = void
+
+export interface OpportunityHistory {
+  id: string;
+  Id: string;
+  OpportunityId: string;
+  StageName: string | null;
+  Amount: number | null;
+  CloseDate: string;
+  Probability: number | null;
+  CreatedDate: string;
+  CreatedById: string;
+};
+
+export type SyncMetadata_salesforce_fetchopportunityhistory = void
+
+export interface Task {
+  id: string;
+  Id: string;
+  Subject: string | null;
+  Status: string | null;
+  ActivityDate: string | null;
+  CreatedDate: string;
+  WhoId: string | null;
+  WhatId: string | null;
+  OwnerId: string;
+  TaskSubtype: string | null;
+  CallType: string | null;
+  CallDurationInSeconds: number | null;
+  CallDisposition: string | null;
+  Who: {  Email: string | null;} | null;
+  Owner: {  Name: string | null;
+  Email: string | null;};
+};
+
+export type SyncMetadata_salesforce_fetchtasks = void
+
+export interface Event {
+  id: string;
+  Id: string;
+  Subject: string | null;
+  StartDateTime: string;
+  EndDateTime: string;
+  DurationInMinutes: number | null;
+  ActivityDate: string | null;
+  CreatedDate: string;
+  WhoId: string | null;
+  WhatId: string | null;
+  OwnerId: string;
+  EventSubtype: string | null;
+  Who: {  Email: string | null;} | null;
+  Owner: {  Name: string | null;
+  Email: string | null;};
+};
+
+export type SyncMetadata_salesforce_fetchevents = void

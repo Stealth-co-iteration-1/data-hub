@@ -329,13 +329,11 @@
                 },
                 "CreatedDate": {
                   "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
                 },
                 "LastModifiedDate": {
                   "type": "string",
-                  "format": "date-time",
-                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
                 },
                 "ForecastCategoryName": {
                   "anyOf": [
@@ -558,6 +556,546 @@
               "additionalProperties": false
             },
             "SyncMetadata_salesforce_fetchopportunities": {
+              "type": "null"
+            }
+          }
+        }
+      },
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce OpportunityHistory records for stage velocity analysis.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/opportunity-history",
+            "group": "OpportunityHistory"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchopportunityhistory",
+        "name": "fetch-opportunity-history",
+        "output": [
+          "OpportunityHistory"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "OpportunityHistory",
+          "SyncMetadata_salesforce_fetchopportunityhistory"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "OpportunityHistory": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "OpportunityId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "StageName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Amount": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CloseDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "Probability": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "CreatedById": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "OpportunityId",
+                "StageName",
+                "Amount",
+                "CloseDate",
+                "Probability",
+                "CreatedDate",
+                "CreatedById"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchopportunityhistory": {
+              "type": "null"
+            }
+          }
+        }
+      },
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce Task records with Who and Owner relationships.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/tasks",
+            "group": "Tasks"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchtasks",
+        "name": "fetch-tasks",
+        "output": [
+          "Task"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "Task",
+          "SyncMetadata_salesforce_fetchtasks"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "Task": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Subject": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Status": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ActivityDate": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "WhoId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "WhatId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "OwnerId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "TaskSubtype": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CallType": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CallDurationInSeconds": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CallDisposition": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Who": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Email": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Owner": {
+                  "type": "object",
+                  "properties": {
+                    "Name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "Email": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "Name",
+                    "Email"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "Subject",
+                "Status",
+                "ActivityDate",
+                "CreatedDate",
+                "WhoId",
+                "WhatId",
+                "OwnerId",
+                "TaskSubtype",
+                "CallType",
+                "CallDurationInSeconds",
+                "CallDisposition",
+                "Who",
+                "Owner"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchtasks": {
+              "type": "null"
+            }
+          }
+        }
+      },
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce Event records with Who and Owner relationships.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/events",
+            "group": "Events"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchevents",
+        "name": "fetch-events",
+        "output": [
+          "Event"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "Event",
+          "SyncMetadata_salesforce_fetchevents"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "Event": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Subject": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "StartDateTime": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "EndDateTime": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "DurationInMinutes": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ActivityDate": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "WhoId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "WhatId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "OwnerId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "EventSubtype": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Who": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Email": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Owner": {
+                  "type": "object",
+                  "properties": {
+                    "Name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "Email": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "Name",
+                    "Email"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "Subject",
+                "StartDateTime",
+                "EndDateTime",
+                "DurationInMinutes",
+                "ActivityDate",
+                "CreatedDate",
+                "WhoId",
+                "WhatId",
+                "OwnerId",
+                "EventSubtype",
+                "Who",
+                "Owner"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchevents": {
               "type": "null"
             }
           }
