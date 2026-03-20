@@ -38,13 +38,34 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Active
 
-(None — planning next milestone)
+- [ ] Dagster local development setup (dagster dev)
+- [ ] Nango proxy client for authenticated Salesforce API calls
+- [ ] Salesforce Opportunity asset with full refresh
+- [ ] Salesforce OpportunityHistory asset with full refresh
+- [ ] Salesforce Task asset with full refresh
+- [ ] Salesforce Event asset with full refresh
+- [ ] Raw JSON persistence to PostgreSQL
+- [ ] Dagster Cloud compatible project structure
+
+## Current Milestone: v0.3 Dagster Salesforce Pipeline
+
+**Goal:** Pull-based Salesforce data ingestion using Dagster assets, with Nango as the authentication proxy.
+
+**Target features:**
+- Dagster local dev environment
+- Nango proxy client for Salesforce SOQL queries
+- One asset per Salesforce model (Opportunity, OpportunityHistory, Task, Event)
+- Full refresh strategy (incremental deferred)
+- Raw JSON to PostgreSQL
 
 ### Out of Scope
 
 - Event consumers — deferred to future milestone
 - Schema drift detection — deferred to future milestone
 - Real-time streaming — batch/webhook model for now
+- Incremental/delta loads — full refresh first, optimize later
+- Bucket storage for raw data — PostgreSQL for now
+- Replacing webhook ingestion path — parallel validation
 
 ## Context
 

@@ -1,21 +1,21 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.2
-milestone_name: milestone
-status: unknown
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-03-20T13:51:44.193Z"
+milestone: v0.3
+milestone_name: Dagster Salesforce Pipeline
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-20"
 progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 4
-  completed_plans: 5
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-20
-**Status**: Phase 09 complete — Salesforce Task sync (fetch-tasks.ts) and Event sync (fetch-events.ts) ready; TASK-01 through TASK-03 and EVNT-01 through EVNT-03 satisfied
+**Status**: Defining requirements for v0.3 Dagster Salesforce Pipeline
 
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core Value**: Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-**Current Focus**: v0.2.0 Salesforce Revenue Reporting Syncs — Nango syncs for Opportunities, OpportunityHistory, Tasks, Events
+**Current Focus**: v0.3 Dagster Salesforce Pipeline — Pull-based ingestion using Dagster assets with Nango as auth proxy
 
 **Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern
 
@@ -33,8 +33,10 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: 09 (activity-syncs) — COMPLETE
-Plan: 2 of 2 (all plans complete)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-20 — Milestone v0.3 started
 
 ## Session Log
 
