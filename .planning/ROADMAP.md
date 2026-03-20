@@ -27,7 +27,9 @@ Create Nango sync scripts that pull Salesforce revenue data per the Engineering 
   2. Pagination utility handles Salesforce REST API nextRecordsUrl pattern across any query
   3. Base Zod schemas defined that match data-hub schema validation expectations
   4. Sync development environment configured (nango-integrations/salesforce/syncs/)
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 06-01-PLAN.md - Shared utilities (buildQuery, pagination config) and Zod schema helpers
 
 ### Phase 7: Opportunity Sync
 **Goal**: Complete Opportunity records with nested relationships flowing to data-hub
@@ -67,7 +69,7 @@ Create Nango sync scripts that pull Salesforce revenue data per the Engineering 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. Salesforce Sync Infrastructure | 0/? | Not started | - |
+| 6. Salesforce Sync Infrastructure | 0/1 | Planned | - |
 | 7. Opportunity Sync | 0/? | Not started | - |
 | 8. OpportunityHistory Sync | 0/? | Not started | - |
 | 9. Activity Syncs | 0/? | Not started | - |
