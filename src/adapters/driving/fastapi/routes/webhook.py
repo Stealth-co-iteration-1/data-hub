@@ -1,13 +1,19 @@
 """Nango webhook endpoint with fast-ack pattern.
 
 Receives webhooks, verifies signature, acknowledges immediately (202),
-then processes in background task.
+then fetches actual records from Nango Records API in background.
 
 Per CONTEXT.md decisions:
 - Sync webhooks only: auth and forward types acknowledged (202) but not processed
 - Fast-ack + background processing via FastAPI BackgroundTasks
 - Validation failure: 202 Accepted (stops Nango retries), log failure with full context
 - Unknown webhook types: 202 Accepted, ignore, log at INFO level
+
+Flow:
+1. Webhook notifies sync completed
+2. We acknowledge immediately (202)
+3. Background task fetches records via GET /records API
+4. Each record is stored individually with event_id for idempotency
 """
 
 import hashlib
@@ -15,9 +21,11 @@ import json
 import time
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
+from src.adapters.driven.nango import NangoClient
 from src.kernel.commands.add_data import AddDataCommand
 from src.kernel.domain.models import CorrelationContext
 from src.kernel.exceptions import SchemaNotFoundError, ValidationError
@@ -30,7 +38,7 @@ from src.observability.metrics import (
     webhooks_received,
 )
 
-from ..dependencies import get_add_data_handler, verify_nango_signature
+from ..dependencies import get_add_data_handler, get_nango_client, verify_nango_signature
 from ..schemas import WebhookResponse
 
 router = APIRouter(tags=["webhooks"])
@@ -43,6 +51,7 @@ async def nango_webhook(
     background_tasks: BackgroundTasks,
     raw_body: bytes = Depends(verify_nango_signature),
     handler: AddDataHandler = Depends(get_add_data_handler),
+    nango_client: NangoClient = Depends(get_nango_client),
 ) -> WebhookResponse:
     """Receive Nango webhook, acknowledge immediately, process in background.
 
@@ -83,6 +92,7 @@ async def nango_webhook(
         _process_sync_webhook,
         payload=payload,
         handler=handler,
+        nango_client=nango_client,
         correlation_id=correlation_id,
     )
 
@@ -92,13 +102,14 @@ async def nango_webhook(
 async def _process_sync_webhook(
     payload: dict[str, Any],
     handler: AddDataHandler,
+    nango_client: NangoClient,
     correlation_id: str,
 ) -> None:
-    """Background task: process a sync webhook after 202 is returned.
+    """Background task: fetch and store records after sync webhook.
 
-    Creates AddDataCommand from webhook payload and calls handler.
-    Logs validation errors with full context (per OBSV-02).
-    Records processing latency metric (OBSV-03).
+    1. Check if sync was successful
+    2. Fetch actual records from Nango Records API
+    3. Store each record individually with event_id for idempotency
 
     Important: Re-bind correlation_id since this runs after request completes.
     """
@@ -114,83 +125,122 @@ async def _process_sync_webhook(
     )
 
     bg_logger = get_logger(__name__)
+    model = payload.get("model", "unknown")
+    connection_id = payload.get("connectionId", "unknown")
 
-    # Generate event_id from payload hash for idempotency
-    # Different payloads (success vs error, different timestamps) get different IDs
-    event_id = _generate_nango_event_id(payload)
-
-    # Check if this is an error sync
+    # Check if this is an error sync - don't fetch records for failed syncs
     is_error = _is_sync_error(payload)
-
-    # Enrich payload with event_id and error flag for repository
-    enriched_payload = {
-        **payload,
-        "event_id": event_id,
-        "_sync_error": is_error,  # Internal flag for audit log status
-    }
-
-    # Build AddDataCommand from Nango sync webhook payload
-    command = AddDataCommand(
-        model=payload.get("model", "unknown"),
-        connection_id=payload.get("connectionId", "unknown"),
-        schema_name=payload.get("model", "unknown"),
-        raw_data=enriched_payload,
-        correlation=CorrelationContext(source="nango_webhook"),
-    )
+    if is_error:
+        bg_logger.warning(
+            "sync_error_received",
+            connection_id=connection_id,
+            model=model,
+            error=payload.get("error"),
+        )
+        # Record latency even for errors
+        elapsed = time.monotonic() - start_time
+        processing_latency.observe(elapsed)
+        return
 
     bg_logger.info(
-        "webhook_processing_started",
-        connection_id=command.connection_id,
-        model=command.model,
+        "fetching_nango_records",
+        connection_id=connection_id,
+        model=model,
     )
 
     try:
-        await handler.handle(command)
-
-        # Success: increment records_added counter (OBSV-03)
-        records_added.inc()
-
-        bg_logger.info(
-            "webhook_processed_ok",
-            connection_id=command.connection_id,
-            model=command.model,
+        # Fetch actual records from Nango Records API
+        records = await nango_client.fetch_all_records(
+            model=model,
+            connection_id=connection_id,
+            provider_config_key=payload.get("providerConfigKey", "salesforce"),
         )
 
-    except ValidationError as exc:
-        # Validation failure: increment counter and log (OBSV-02, OBSV-03)
-        validation_failures.labels(schema_name=exc.schema_name).inc()
+        bg_logger.info(
+            "nango_records_received",
+            connection_id=connection_id,
+            model=model,
+            record_count=len(records),
+        )
 
-        log_kwargs: dict[str, Any] = {
-            "schema_name": exc.schema_name,
-            "connection_id": command.connection_id,
-            "model": command.model,
-            "error_count": len(exc.errors),
-            "error_fields": [e.field_path for e in exc.errors],
-        }
+        # Store each record individually
+        stored_count = 0
+        for record in records:
+            # Generate event_id from record for idempotency
+            # Use the record's Nango ID if available, otherwise hash the record
+            record_id = record.get("id") or record.get("Id")
+            if record_id:
+                event_id = f"{model}:{connection_id}:{record_id}"
+            else:
+                event_id = _generate_nango_event_id(record)
 
-        # Full payload only in development (per CONTEXT.md)
-        if should_log_full_payload():
-            log_kwargs["data_sample"] = _truncate_payload(payload)
+            # Enrich record with event_id
+            enriched_record = {
+                **record,
+                "event_id": event_id,
+                "_sync_error": False,
+            }
 
-        bg_logger.warning("validation_failure", **log_kwargs)
+            command = AddDataCommand(
+                model=model,
+                connection_id=connection_id,
+                schema_name=model,
+                raw_data=enriched_record,
+                correlation=CorrelationContext(source="nango_records"),
+            )
 
-    except SchemaNotFoundError as exc:
-        # Schema not found: count as validation failure
-        validation_failures.labels(schema_name=exc.schema_name).inc()
+            try:
+                await handler.handle(command)
+                stored_count += 1
+                records_added.inc()
 
-        bg_logger.warning(
-            "schema_not_found",
-            schema_name=exc.schema_name,
-            connection_id=command.connection_id,
-            model=command.model,
+            except ValidationError as exc:
+                validation_failures.labels(schema_name=exc.schema_name).inc()
+                log_kwargs: dict[str, Any] = {
+                    "schema_name": exc.schema_name,
+                    "connection_id": connection_id,
+                    "model": model,
+                    "record_id": record_id,
+                    "error_count": len(exc.errors),
+                    "error_fields": [e.field_path for e in exc.errors],
+                }
+                if should_log_full_payload():
+                    log_kwargs["data_sample"] = _truncate_payload(record)
+                bg_logger.warning("record_validation_failure", **log_kwargs)
+
+            except SchemaNotFoundError as exc:
+                validation_failures.labels(schema_name=exc.schema_name).inc()
+                bg_logger.warning(
+                    "schema_not_found",
+                    schema_name=exc.schema_name,
+                    connection_id=connection_id,
+                    model=model,
+                )
+                # Stop processing this model if schema not found
+                break
+
+        bg_logger.info(
+            "records_stored",
+            connection_id=connection_id,
+            model=model,
+            stored_count=stored_count,
+            total_records=len(records),
+        )
+
+    except httpx.HTTPStatusError as exc:
+        bg_logger.error(
+            "nango_api_error",
+            connection_id=connection_id,
+            model=model,
+            status_code=exc.response.status_code,
+            response_text=exc.response.text[:500],
         )
 
     except Exception:
-        # Unexpected error: log exception with stack trace
         bg_logger.exception(
             "webhook_processing_error",
-            connection_id=command.connection_id,
-            model=command.model,
+            connection_id=connection_id,
+            model=model,
         )
 
     finally:

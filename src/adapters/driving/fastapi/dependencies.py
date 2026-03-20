@@ -3,6 +3,7 @@
 Provides:
 - verify_nango_signature: HMAC-SHA256 signature verification on raw request bytes
 - get_add_data_handler: Dependency injection for kernel handler
+- get_nango_client: Dependency injection for Nango API client
 """
 
 import hashlib
@@ -11,6 +12,7 @@ import hmac
 from fastapi import Header, HTTPException, Request, status
 
 from src.adapters.driven.event_bus.publisher import InMemoryEventPublisher
+from src.adapters.driven.nango import NangoClient
 from src.adapters.driven.schema_registry.permissive import PermissiveSchemaRegistry
 from src.config.settings import settings
 from src.kernel.handlers.add_data_handler import AddDataHandler
@@ -113,3 +115,14 @@ async def get_query_handler(request: Request) -> QueryHandler:
     """
     repository = request.app.state.repository
     return QueryHandler(repository=repository)
+
+
+def get_nango_client() -> NangoClient:
+    """Dependency injection for NangoClient.
+
+    Creates client with settings from config.
+
+    Returns:
+        Configured NangoClient instance
+    """
+    return NangoClient()

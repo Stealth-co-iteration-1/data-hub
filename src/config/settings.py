@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     nango_webhook_secret: str = ""
     """HMAC secret for Nango webhook signature verification (required)"""
 
+    nango_secret_key: str = ""
+    """Nango Secret Key for API authentication (required for fetching records)"""
+
+    nango_base_url: str = "https://api.nango.dev"
+    """Nango API base URL"""
+
     database_url: str = "sqlite+aiosqlite:///./data.db"
     """Database connection string"""
 

@@ -16,6 +16,17 @@ def make_signature(body: bytes, secret: str) -> str:
     return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 
 
+class FakeNangoClient:
+    """Fake Nango client for testing."""
+
+    async def fetch_all_records(
+        self, model: str, connection_id: str, provider_config_key: str = "salesforce"
+    ) -> list[dict]:
+        """Return a test record to trigger schema validation."""
+        # Return a record so schema validation is attempted
+        return [{"id": "test_record_1", "data": "test"}]
+
+
 @pytest.fixture
 async def client(monkeypatch):
     """AsyncClient with test configuration using dependency overrides."""
@@ -27,6 +38,7 @@ async def client(monkeypatch):
     from src.adapters.driving.fastapi.app import app
     from src.adapters.driving.fastapi.dependencies import (
         get_add_data_handler,
+        get_nango_client,
         verify_nango_signature,
     )
     from src.kernel.handlers.add_data_handler import AddDataHandler
@@ -67,8 +79,13 @@ async def client(monkeypatch):
             schema_registry=FakeSchemaRegistry(),
         )
 
+    def fake_nango_client():
+        """Fake Nango client that doesn't make real HTTP calls."""
+        return FakeNangoClient()
+
     app.dependency_overrides[verify_nango_signature] = test_verify_signature
     app.dependency_overrides[get_add_data_handler] = fake_handler
+    app.dependency_overrides[get_nango_client] = fake_nango_client
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
