@@ -30,23 +30,15 @@ Data from connected integrations flows reliably into the platform with strict va
 - [x] DataRepository.query() read port — *Validated in Phase 5: Query Capability*
 - [x] Query HTTP endpoint — *Validated in Phase 5: Query Capability*
 
-### Active
-
 - [x] Salesforce sync infrastructure (utils, Zod schemas, types) — *Validated in Phase 6: Salesforce Sync Infrastructure*
 - [x] Opportunity sync with nested OpportunityContactRoles — *Validated in Phase 7: Opportunity Sync*
 - [x] OpportunityHistory sync for stage tracking — *Validated in Phase 8: OpportunityHistory Sync*
 - [x] Task sync for emails and calls — *Validated in Phase 9: Activity Syncs*
 - [x] Event sync for meetings — *Validated in Phase 9: Activity Syncs*
 
-## Current Milestone: v0.2.0 Salesforce Revenue Reporting Syncs
+### Active
 
-**Goal:** Create Nango sync scripts that pull Salesforce revenue data per the Engineering Data Spec and forward to data-hub webhook.
-
-**Target syncs:**
-- Opportunities (with Account + OpportunityContactRoles)
-- OpportunityHistory (stage change tracking)
-- Tasks (emails, calls — conditional on tool sync)
-- Events (meetings — conditional on tool sync)
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -120,5 +112,21 @@ Data from connected integrations flows reliably into the platform with strict va
 - Query API (POST /query/{model}) with injection prevention
 - Health check, Prometheus metrics, structured logging
 
+## Current State (v0.2.0 Shipped)
+
+**Shipped:** 2026-03-20
+**Codebase:** ~5,948 LOC Python + 729 LOC TypeScript (Nango syncs)
+**Tests:** 134 passing (Python)
+**Syncs:** 4 Salesforce syncs (Opportunity, OpportunityHistory, Task, Event)
+
+**Capabilities (added in v0.2.0):**
+- Salesforce Opportunity sync with nested Account, Owner, and ContactRoles relationships
+- OpportunityHistory sync with CreatedDate incremental filter and velocity ordering
+- Task sync with Who/Owner denormalization and ActivityDate filter
+- Event sync with Who/Owner denormalization and StartDateTime filter
+- Shared Salesforce sync infrastructure (pagination, SOQL builder, Zod schemas)
+- Event_id generation from payload hash for idempotent sync tracking
+- Audit log error status tracking for failed syncs
+
 ---
-*Last updated: 2026-03-20 after Phase 9 (Activity Syncs) complete — v0.2.0 milestone complete*
+*Last updated: 2026-03-20 after v0.2.0 milestone complete*

@@ -1,5 +1,29 @@
 # Milestones
 
+## v0.2 Salesforce Revenue Reporting Syncs (Shipped: 2026-03-20)
+
+**Delivered:** Nango sync scripts for Salesforce revenue data — Opportunities with nested relationships, OpportunityHistory for stage velocity, Tasks and Events with join keys for attribution.
+
+**Phases completed:** 4 phases (6-9), 5 plans
+**Lines of code:** 729 LOC TypeScript (nango-integrations/salesforce)
+**Requirements:** 17/17 satisfied
+
+**Key accomplishments:**
+
+- Shared Salesforce sync infrastructure (pagination via nextRecordsUrl, SOQL builder, Zod schemas)
+- Opportunity sync with nested Account, Owner, and OpportunityContactRoles relationships
+- OpportunityHistory sync with CreatedDate incremental filter and velocity ordering
+- Task sync with Who/Owner denormalization and ActivityDate filter
+- Event sync with Who/Owner denormalization and StartDateTime filter
+- Fixed Salesforce schema compatibility (Type fields, ForecastCategoryName, datetime formats)
+
+**Archives:**
+
+- [v0.2-ROADMAP.md](milestones/v0.2-ROADMAP.md)
+- [v0.2-REQUIREMENTS.md](milestones/v0.2-REQUIREMENTS.md)
+
+---
+
 ## v0.1.0 Production Storage & Query (Shipped: 2026-03-20)
 
 **Delivered:** Production-ready storage with configurable backends and query capability — PostgreSQL adapter alongside SQLite, ENV-based switching, and parameterized SQL queries via kernel and HTTP.
