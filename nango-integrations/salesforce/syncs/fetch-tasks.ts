@@ -41,8 +41,7 @@ const taskSchema = z.object({
     WhatId: z.union([sfId, z.null()]),  // Account, Opportunity, etc.
     OwnerId: sfId,
 
-    // Activity type
-    Type: sfNullableString,
+    // Activity subtype (Note: Task does NOT have a standard Type field)
     TaskSubtype: sfNullableString,
 
     // Call tracking fields (TASK-01)
@@ -62,9 +61,10 @@ type Task = z.infer<typeof taskSchema>;
 // ---------------------------------------------------------------------------
 
 // Note: buildQuery doesn't support relationship fields, so we build SOQL manually
+// Note: Task does NOT have a standard Type field
 const TASK_SOQL_FIELDS = `
     Id, Subject, Status, ActivityDate, CreatedDate,
-    WhoId, WhatId, OwnerId, Type, TaskSubtype,
+    WhoId, WhatId, OwnerId, TaskSubtype,
     CallType, CallDurationInSeconds, CallDisposition,
     Who.Email, Owner.Name, Owner.Email
 `.replace(/\s+/g, ' ').trim();
