@@ -2,7 +2,11 @@ import asyncio
 import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
+
+# Load .env file before reading DATABASE_URL
+load_dotenv()
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
