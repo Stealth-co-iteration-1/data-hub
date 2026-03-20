@@ -33,7 +33,7 @@ Data from connected integrations flows reliably into the platform with strict va
 ### Active
 
 - [x] Salesforce sync infrastructure (utils, Zod schemas, types) — *Validated in Phase 6: Salesforce Sync Infrastructure*
-- [ ] Opportunity sync with nested OpportunityContactRoles
+- [x] Opportunity sync with nested OpportunityContactRoles — *Validated in Phase 7: Opportunity Sync*
 - [ ] OpportunityHistory sync for stage tracking
 - [ ] Task sync for emails and calls
 - [ ] Event sync for meetings
@@ -121,4 +121,4 @@ Data from connected integrations flows reliably into the platform with strict va
 - Health check, Prometheus metrics, structured logging
 
 ---
-*Last updated: 2026-03-20 after Phase 6 (Salesforce Sync Infrastructure) complete*
+*Last updated: 2026-03-20 after Phase 7 (Opportunity Sync) complete*
