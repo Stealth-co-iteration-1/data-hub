@@ -49,6 +49,7 @@ class SQLiteDataRepository:
         """
         record_id = str(uuid4())
         event_id = data.get("event_id")
+        is_sync_error = data.get("_sync_error", False)
 
         async with self._session_factory() as session:
             async with session.begin():
@@ -67,7 +68,12 @@ class SQLiteDataRepository:
                     )
                     result = await session.execute(stmt)
                     # rowcount > 0 means inserted, 0 means duplicate skipped
-                    status = "added" if result.rowcount > 0 else "duplicate"
+                    if result.rowcount == 0:
+                        status = "duplicate"
+                    elif is_sync_error:
+                        status = "error"
+                    else:
+                        status = "added"
                 else:
                     # Normal insert - no idempotency check
                     record = DataRecord(
@@ -78,7 +84,7 @@ class SQLiteDataRepository:
                         data=data,
                     )
                     session.add(record)
-                    status = "added"
+                    status = "error" if is_sync_error else "added"
 
                 # Always write audit entry - PERS-03
                 audit = AuditLog(

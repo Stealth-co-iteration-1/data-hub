@@ -10,6 +10,7 @@ Per CONTEXT.md decisions:
 - Unknown webhook types: 202 Accepted, ignore, log at INFO level
 """
 
+import hashlib
 import json
 import time
 from typing import Any
@@ -114,12 +115,26 @@ async def _process_sync_webhook(
 
     bg_logger = get_logger(__name__)
 
+    # Generate event_id from payload hash for idempotency
+    # Different payloads (success vs error, different timestamps) get different IDs
+    event_id = _generate_nango_event_id(payload)
+
+    # Check if this is an error sync
+    is_error = _is_sync_error(payload)
+
+    # Enrich payload with event_id and error flag for repository
+    enriched_payload = {
+        **payload,
+        "event_id": event_id,
+        "_sync_error": is_error,  # Internal flag for audit log status
+    }
+
     # Build AddDataCommand from Nango sync webhook payload
     command = AddDataCommand(
         model=payload.get("model", "unknown"),
         connection_id=payload.get("connectionId", "unknown"),
         schema_name=payload.get("model", "unknown"),
-        raw_data=payload,
+        raw_data=enriched_payload,
         correlation=CorrelationContext(source="nango_webhook"),
     )
 
@@ -201,3 +216,37 @@ def _truncate_payload(payload: dict[str, Any], max_keys: int = 10) -> dict[str, 
     truncated["_truncated"] = True
     truncated["_original_keys"] = len(payload)
     return truncated
+
+
+def _generate_nango_event_id(payload: dict[str, Any]) -> str:
+    """Generate a unique event_id for a Nango webhook payload.
+
+    The event_id is a SHA-256 hash of the canonical JSON representation of the
+    payload. This ensures:
+    - Same payload = same event_id (idempotency for exact duplicates)
+    - Different payload = different event_id (retried/fixed syncs get stored)
+
+    A successful sync and an errored sync for the same model will have different
+    payloads (different timestamps, error fields, etc.) and thus different event_ids.
+
+    Args:
+        payload: The Nango webhook payload
+
+    Returns:
+        A hex string hash suitable for use as event_id
+    """
+    # Use canonical JSON (sorted keys, no extra whitespace) for consistent hashing
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _is_sync_error(payload: dict[str, Any]) -> bool:
+    """Check if a Nango sync webhook indicates an error.
+
+    Args:
+        payload: The Nango webhook payload
+
+    Returns:
+        True if the sync failed (success=false or error field present)
+    """
+    return payload.get("success") is False or "error" in payload
