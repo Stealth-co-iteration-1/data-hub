@@ -77,7 +77,7 @@ Phases execute in numeric order: 10 -> 10.1 -> 10.2 -> 11 -> 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 10. Dagster Infrastructure | v0.3 | 1/1 | Complete | 2026-03-23 |
-| 11. Nango Resource & Opportunity Asset | 1/1 | Complete   | 2026-03-23 | - |
+| 11. Nango Resource & Opportunity Asset | 1/1 | Complete    | 2026-03-23 | - |
 | 12. Remaining Salesforce Assets | v0.3 | 0/? | Not started | - |
 
 ---
