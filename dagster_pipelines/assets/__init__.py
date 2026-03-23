@@ -1,4 +1,4 @@
 """Dagster asset definitions."""
-from dagster_pipelines.assets.ping_database import ping_database
+from dagster_pipelines.assets.salesforce import salesforce_opportunities
 
-__all__ = ["ping_database"]
+__all__ = ["salesforce_opportunities"]
