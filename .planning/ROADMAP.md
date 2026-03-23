@@ -37,10 +37,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. `dagster dev` boots without errors and opens webserver UI
   2. dagster.yaml configures PostgreSQL storage (not SQLite)
   3. definitions.py and workspace.yaml exist at project root
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 10-01: [TBD]
+- [ ] 10-01-PLAN.md — Dagster infrastructure with PostgreSQL storage and ping_database validation asset
 
 ### Phase 11: Nango Resource & Opportunity Asset
 **Goal**: First asset validates end-to-end pattern: fetch from Nango Records API, persist to PostgreSQL
@@ -76,7 +76,7 @@ Phases execute in numeric order: 10 -> 10.1 -> 10.2 -> 11 -> 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 10. Dagster Infrastructure | v0.3 | 0/? | Not started | - |
+| 10. Dagster Infrastructure | v0.3 | 0/1 | Planning complete | - |
 | 11. Nango Resource & Opportunity Asset | v0.3 | 0/? | Not started | - |
 | 12. Remaining Salesforce Assets | v0.3 | 0/? | Not started | - |
 
