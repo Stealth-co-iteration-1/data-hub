@@ -60,9 +60,9 @@ def table_exists(table: str, schema: str = "public") -> bool:
 
 st.title("📊 Sales Intelligence Dashboard")
 
-# Check if marts exist
-marts_exist = table_exists("fct_opportunities", "marts")
-staging_exist = table_exists("stg_salesforce__opportunities", "staging")
+# Check if marts exist (dbt creates schemas as public_marts, public_staging, etc.)
+marts_exist = table_exists("fct_opportunities", "public_marts")
+staging_exist = table_exists("stg_salesforce__opportunities", "public_staging")
 
 if not marts_exist:
     st.warning(
@@ -91,7 +91,7 @@ overview_metrics = query_df("""
         sum(amount) filter (where opportunity_status = 'Won') as won_revenue,
         avg(amount) as avg_deal_size,
         avg(days_to_close) filter (where opportunity_status != 'Open') as avg_days_to_close
-    FROM marts.fct_opportunities
+    FROM public_marts.fct_opportunities
 """)
 
 activity_metrics = query_df("""
@@ -100,7 +100,7 @@ activity_metrics = query_df("""
         count(*) filter (where activity_type = 'event') as total_events,
         count(*) filter (where activity_type = 'task') as total_tasks,
         count(*) filter (where is_completed) as completed_tasks
-    FROM marts.fct_activities
+    FROM public_marts.fct_activities
 """)
 
 if not overview_metrics.empty:
@@ -147,7 +147,7 @@ if not overview_metrics.empty:
         st.metric("Avg Days to Close", f"{avg_days:.0f}" if pd.notna(avg_days) else "N/A")
 
 # Last refresh
-refresh_df = query_df("SELECT max(refreshed_at) as last_refresh FROM marts.fct_opportunities")
+refresh_df = query_df("SELECT max(refreshed_at) as last_refresh FROM public_marts.fct_opportunities")
 if not refresh_df.empty and refresh_df["last_refresh"].iloc[0]:
     st.caption(f"Data refreshed: {refresh_df['last_refresh'].iloc[0]}")
 
@@ -161,7 +161,7 @@ st.divider()
 st.header("📈 Pipeline Snapshot")
 
 pipeline_df = query_df("""
-    SELECT * FROM reports.rpt_pipeline_snapshot
+    SELECT * FROM public_reports.rpt_pipeline_snapshot
     ORDER BY report_section, dimension
 """)
 
@@ -233,7 +233,7 @@ st.header("⏱️ Sales Velocity")
 st.caption("Where do deals get stuck?")
 
 velocity_df = query_df("""
-    SELECT * FROM reports.rpt_sales_velocity
+    SELECT * FROM public_reports.rpt_sales_velocity
     ORDER BY avg_days_in_stage DESC
 """)
 
@@ -286,7 +286,7 @@ st.header("👥 Rep Performance")
 st.caption("Who are top performers? Who needs coaching?")
 
 rep_df = query_df("""
-    SELECT * FROM reports.rpt_win_rate_by_owner
+    SELECT * FROM public_reports.rpt_win_rate_by_owner
     ORDER BY won_revenue DESC NULLS LAST
 """)
 
@@ -364,7 +364,7 @@ st.header("📞 Activity Coverage")
 st.caption("Do more activities correlate with higher win rates?")
 
 coverage_df = query_df("""
-    SELECT * FROM reports.rpt_activity_coverage
+    SELECT * FROM public_reports.rpt_activity_coverage
 """)
 
 if not coverage_df.empty:
@@ -435,7 +435,7 @@ top_opps = query_df("""
         days_until_close,
         total_activities,
         owner_id
-    FROM marts.fct_opportunities
+    FROM public_marts.fct_opportunities
     WHERE opportunity_status = 'Open'
     ORDER BY amount DESC NULLS LAST
     LIMIT 15
