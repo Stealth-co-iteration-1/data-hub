@@ -98,7 +98,7 @@ All phases complete (10-12), all requirements satisfied (10/10)
 
 ### Pending Todos
 
-3 pending — see `.planning/todos/pending/`
+4 pending — see `.planning/todos/pending/`
 
 ---
 
