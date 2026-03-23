@@ -24,6 +24,7 @@ class NangoResource(dg.ConfigurableResource["NangoResource"]):
     base_url: str = "https://api.nango.dev"
     max_retries: int = 5
     base_delay: float = 1.0
+    page_delay: float = 0.3  # Delay between paginated requests to avoid rate limits
 
     _client: httpx.Client = PrivateAttr()
 
@@ -94,8 +95,13 @@ class NangoResource(dg.ConfigurableResource["NangoResource"]):
         """
         records: list[dict[str, Any]] = []
         cursor: str | None = None
+        page_count = 0
 
         while True:
+            # Add delay between pages to avoid rate limits (Free: 200 req/min)
+            if page_count > 0 and self.page_delay > 0:
+                time.sleep(self.page_delay)
+
             params: dict[str, Any] = {"model": model, "limit": 100}
             if cursor:
                 params["cursor"] = cursor
@@ -112,6 +118,7 @@ class NangoResource(dg.ConfigurableResource["NangoResource"]):
             data = response.json()
 
             records.extend(data.get("records", []))
+            page_count += 1
 
             cursor = data.get("next_cursor")
             if not cursor:
