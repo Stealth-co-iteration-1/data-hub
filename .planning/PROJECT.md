@@ -38,14 +38,14 @@ Data from connected integrations flows reliably into the platform with strict va
 
 ### Active
 
-- [ ] Dagster local development setup (dagster dev)
-- [ ] Nango proxy client for authenticated Salesforce API calls
-- [ ] Salesforce Opportunity asset with full refresh
+- [x] Dagster local development setup (dagster dev) — *Validated in Phase 10: Dagster Infrastructure*
+- [x] NangoResource for Nango Records API — *Validated in Phase 11: Nango Resource & Opportunity Asset*
+- [x] Salesforce Opportunity asset with full refresh — *Validated in Phase 11: Nango Resource & Opportunity Asset*
 - [ ] Salesforce OpportunityHistory asset with full refresh
 - [ ] Salesforce Task asset with full refresh
 - [ ] Salesforce Event asset with full refresh
-- [ ] Raw JSON persistence to PostgreSQL
-- [ ] Dagster Cloud compatible project structure
+- [x] Raw JSON persistence to PostgreSQL — *Validated in Phase 11: Nango Resource & Opportunity Asset*
+- [x] Dagster Cloud compatible project structure — *Validated in Phase 10: Dagster Infrastructure*
 
 ## Current Milestone: v0.3 Dagster Salesforce Pipeline
 
@@ -149,5 +149,20 @@ Data from connected integrations flows reliably into the platform with strict va
 - Event_id generation from payload hash for idempotent sync tracking
 - Audit log error status tracking for failed syncs
 
+## Current State (v0.3 In Progress)
+
+**Started:** 2026-03-23
+**Codebase:** ~6,100 LOC Python + 729 LOC TypeScript (Nango syncs)
+**Tech stack:** Python 3.12+, FastAPI, SQLAlchemy 2.0 async, asyncpg, Dagster 1.12+, httpx, structlog, prometheus_client, Pydantic, Alembic
+
+**Capabilities (added in v0.3):**
+- Dagster orchestration infrastructure with PostgreSQL storage (Phase 10)
+- NangoResource ConfigurableResource with paginated Records API fetching (Phase 11)
+- salesforce_opportunities asset with DELETE+INSERT full refresh idempotency (Phase 11)
+- MaterializeResult row count metadata for Dagster UI observability (Phase 11)
+
+**Remaining for v0.3:**
+- OpportunityHistory, Task, Event assets following Opportunity pattern (Phase 12)
+
 ---
-*Last updated: 2026-03-20 after v0.2.0 milestone complete*
+*Last updated: 2026-03-23 after Phase 11 complete*
