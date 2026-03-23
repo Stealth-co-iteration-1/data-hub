@@ -49,11 +49,11 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# Database files (runtime-generated)
-*.db
-*.db-shm
-*.db-wal
+# Dagster
+.tmp_dagster_home_*/
 
-# Staq
+# Environment
 .env
-node_modules
+
+# Node (nango-integrations)
+node_modules/

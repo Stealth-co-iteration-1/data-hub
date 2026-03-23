@@ -1,5 +1,5 @@
 # Dagster workspace configuration
-# Points to definitions.py entry point
+# Points to definitions.py entry point at project root
 load_from:
-  - python_module:
-      module_name: dagster_pipelines.definitions
+  - python_file:
+      relative_path: definitions.py
