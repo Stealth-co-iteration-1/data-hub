@@ -9,9 +9,9 @@ Requirements for Dagster Salesforce Pipeline milestone. Each maps to roadmap pha
 
 ### Dagster Infrastructure
 
-- [ ] **DAGSTER-01**: Dagster project scaffold with definitions.py and workspace.yaml
-- [ ] **DAGSTER-02**: dagster.yaml with PostgreSQL storage (not SQLite)
-- [ ] **DAGSTER-03**: dagster dev boots locally without errors
+- [x] **DAGSTER-01**: Dagster project scaffold with definitions.py and workspace.yaml
+- [x] **DAGSTER-02**: dagster.yaml with PostgreSQL storage (not SQLite)
+- [x] **DAGSTER-03**: dagster dev boots locally without errors
 
 ### Nango Client
 
@@ -64,9 +64,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DAGSTER-01 | Phase 10 | Pending |
-| DAGSTER-02 | Phase 10 | Pending |
-| DAGSTER-03 | Phase 10 | Pending |
+| DAGSTER-01 | Phase 10 | Complete |
+| DAGSTER-02 | Phase 10 | Complete |
+| DAGSTER-03 | Phase 10 | Complete |
 | NANGO-01 | Phase 11 | Pending |
 | NANGO-02 | Phase 11 | Pending |
 | ASSET-01 | Phase 11 | Pending |

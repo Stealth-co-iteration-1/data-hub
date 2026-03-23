@@ -23,7 +23,7 @@ v0.3 adds a pull-based Salesforce data ingestion pipeline using Dagster alongsid
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 10: Dagster Infrastructure** - Project scaffold with PostgreSQL storage and local dev
+- [x] **Phase 10: Dagster Infrastructure** - Project scaffold with PostgreSQL storage and local dev
 - [ ] **Phase 11: Nango Resource & Opportunity Asset** - NangoResource wrapping Records API, first asset validates pattern
 - [ ] **Phase 12: Remaining Salesforce Assets** - OpportunityHistory, Task, Event assets
 
@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 10-01-PLAN.md — Dagster infrastructure with PostgreSQL storage and ping_database validation asset
+- [x] 10-01-PLAN.md — Dagster infrastructure with PostgreSQL storage and ping_database validation asset
 
 ### Phase 11: Nango Resource & Opportunity Asset
 **Goal**: First asset validates end-to-end pattern: fetch from Nango Records API, persist to PostgreSQL
@@ -76,7 +76,7 @@ Phases execute in numeric order: 10 -> 10.1 -> 10.2 -> 11 -> 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 10. Dagster Infrastructure | v0.3 | 0/1 | Planning complete | - |
+| 10. Dagster Infrastructure | v0.3 | 1/1 | Complete | 2026-03-23 |
 | 11. Nango Resource & Opportunity Asset | v0.3 | 0/? | Not started | - |
 | 12. Remaining Salesforce Assets | v0.3 | 0/? | Not started | - |
 
