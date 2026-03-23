@@ -1,5 +1,29 @@
 # Milestones
 
+## v0.3 Dagster Salesforce Pipeline (Shipped: 2026-03-23)
+
+**Delivered:** Pull-based Salesforce data ingestion using Dagster assets — NangoResource wrapping Records API, 4 Salesforce objects materialized to dedicated PostgreSQL tables with full refresh idempotency.
+
+**Phases completed:** 3 phases (10-12), 3 plans
+**Lines of code:** 442 LOC Python (dagster_pipelines/)
+**Requirements:** 10/10 satisfied
+
+**Key accomplishments:**
+
+- Dagster project scaffold with PostgreSQL storage (not SQLite)
+- NangoResource ConfigurableResource with paginated get_records
+- salesforce_opportunities asset with DELETE+INSERT full refresh
+- salesforce_opportunity_history, salesforce_tasks, salesforce_events assets
+- MaterializeResult with dagster/row_count metadata on all assets
+- EnvVar pattern for Dagster Cloud compatibility
+
+**Archives:**
+
+- [v0.3-ROADMAP.md](milestones/v0.3-ROADMAP.md)
+- [v0.3-REQUIREMENTS.md](milestones/v0.3-REQUIREMENTS.md)
+
+---
+
 ## v0.2 Salesforce Revenue Reporting Syncs (Shipped: 2026-03-20)
 
 **Delivered:** Nango sync scripts for Salesforce revenue data — Opportunities with nested relationships, OpportunityHistory for stage velocity, Tasks and Events with join keys for attribution.

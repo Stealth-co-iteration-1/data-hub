@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.3
-milestone_name: milestone
-status: unknown
-stopped_at: Completed 12-01-PLAN.md - all Salesforce assets
-last_updated: "2026-03-23T15:03:08.861Z"
+milestone_name: Dagster Salesforce Pipeline
+status: shipped
+stopped_at: Milestone v0.3 archived and completed
+last_updated: "2026-03-23T15:15:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 3
@@ -15,26 +15,26 @@ progress:
 # Project State: data-hub
 
 **Last updated**: 2026-03-23
-**Status**: Phase 12 complete, v0.3 milestone complete
+**Status**: v0.3 milestone shipped
 
 ---
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-20)
+See: .planning/PROJECT.md (updated 2026-03-23)
 
 **Core Value**: Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-**Current Focus**: v0.3 Dagster Salesforce Pipeline — Pull-based ingestion using Dagster assets with Nango Records API
+**Current Focus**: Milestone v0.3 complete — ready for next milestone planning
 
-**Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern
+**Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern + Dagster orchestration
 
 ---
 
 ## Current Position
 
-Phase: 12 (remaining-salesforce-assets) — COMPLETE
-Plan: 1 of 1 (COMPLETE)
+Milestone: v0.3 (Dagster Salesforce Pipeline) — SHIPPED
+All phases complete (10-12), all requirements satisfied (10/10)
 
 ## Performance Metrics
 
@@ -61,7 +61,7 @@ Plan: 1 of 1 (COMPLETE)
 
 ## Accumulated Context
 
-### Key Decisions
+### Key Decisions (v0.3)
 
 | Decision | Rationale | Phase |
 |----------|-----------|-------|
@@ -76,30 +76,31 @@ Plan: 1 of 1 (COMPLETE)
 
 ### Open Questions
 
-- (None yet)
+- (None)
 
 ### Blockers
 
 - (None)
 
-### Deferred Items
+### Deferred Items (for v0.4+)
 
-- Hourly schedule (SCHED-01) — deferred to v0.3.x after assets validated
-- Multi-connection partitioning (SCHED-02) — deferred to v0.4
-- Dagster Cloud deployment (DEPLOY-01) — deferred to v0.3.x
-- Incremental loading (ADV-01) — deferred to v0.4
-- Schema drift detection (ADV-02) — deferred to v0.4
+- Hourly schedule (SCHED-01)
+- Multi-connection partitioning (SCHED-02)
+- Dagster Cloud deployment (DEPLOY-01)
+- Incremental loading (ADV-01)
+- Schema drift detection (ADV-02)
 
 ## Tech Debt Log
 
 | Item | Severity | Added | Phase |
 |------|----------|-------|-------|
-| (None yet) | - | - | - |
+| (None) | - | - | - |
 
 ---
 
 ## Milestone History
 
+**v0.3** (shipped 2026-03-23): 3 phases (10-12), 3 plans — Dagster Salesforce Pipeline
 **v0.2.0** (shipped 2026-03-20): 4 phases (6-9), 5 plans — Salesforce Revenue Reporting Syncs
 **v0.1.0** (shipped 2026-03-20): 2 phases (4-5), 6 plans — PostgreSQL backend + Query capability
 **v0.0.1** (shipped 2026-03-19): 3 phases (1-3), 10 plans — Foundation + Persistence + Transport
@@ -108,25 +109,13 @@ Plan: 1 of 1 (COMPLETE)
 
 ## Session Continuity
 
-**Last session:** 2026-03-23T15:00:35.628Z
-**Stopped at:** Completed 12-01-PLAN.md - all Salesforce assets
+**Last session:** 2026-03-23
+**Stopped at:** Milestone v0.3 archived and completed
 
 ### Next Actions
 
-1. v0.3 milestone complete - all Salesforce assets available
-2. Consider scheduling (v0.3.x) or incremental loading (v0.4)
-
-### Files Modified This Session
-
-- dagster_pipelines/assets/salesforce/opportunity_history.py (created - OpportunityHistory asset)
-- dagster_pipelines/assets/salesforce/task.py (created - Task asset)
-- dagster_pipelines/assets/salesforce/event.py (created - Event asset)
-- dagster_pipelines/assets/salesforce/__init__.py (updated - exports all 4 assets)
-- dagster_pipelines/definitions.py (updated - registers all 4 assets)
-- .planning/STATE.md (updated)
-- .planning/ROADMAP.md (updated)
-- .planning/REQUIREMENTS.md (updated)
-- .planning/phases/12-remaining-salesforce-assets/12-01-SUMMARY.md (created)
+1. Run `/gsd:new-milestone` to plan v0.4
+2. Possible v0.4 focus: Scheduling, incremental loading, or Dagster Cloud deployment
 
 ---
 *Last updated: 2026-03-23*
