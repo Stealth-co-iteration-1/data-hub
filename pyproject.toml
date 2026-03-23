@@ -17,6 +17,9 @@ dependencies = [
     "streamlit>=1.32.0",
     "pandas>=2.2.0",
     "psycopg2-binary>=2.9.9",
+    "dagster>=1.12.20",
+    "dagster-postgres>=0.28.20",
+    "dagster-webserver>=1.12.20",
 ]
 
 [project.optional-dependencies]
