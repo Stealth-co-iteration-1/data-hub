@@ -9,7 +9,7 @@ from pydantic import PrivateAttr
 from typing import Any
 
 
-class PostgresResource(dg.ConfigurableResource):
+class PostgresResource(dg.ConfigurableResource["PostgresResource"]):
     """PostgreSQL database resource using psycopg2.
 
     Configuration uses EnvVar pattern (not os.getenv) for Dagster Cloud compatibility.

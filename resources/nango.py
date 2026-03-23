@@ -2,13 +2,16 @@
 
 Uses httpx for HTTP client with connection pooling and proper lifecycle management.
 """
+from typing import Any
+
 import dagster as dg
 import httpx
+from httpx import QueryParams
 from contextlib import contextmanager
 from pydantic import PrivateAttr
 
 
-class NangoResource(dg.ConfigurableResource):
+class NangoResource(dg.ConfigurableResource["NangoResource"]):
     """Nango Records API client as a Dagster ConfigurableResource.
 
     Configuration:
@@ -37,7 +40,7 @@ class NangoResource(dg.ConfigurableResource):
         model: str,
         connection_id: str,
         provider_config_key: str = "salesforce",
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Fetch all records for a model, handling pagination.
 
         Args:
@@ -48,11 +51,11 @@ class NangoResource(dg.ConfigurableResource):
         Returns:
             List of record dicts with _nango_metadata
         """
-        records: list[dict] = []
+        records: list[dict[str, Any]] = []
         cursor: str | None = None
 
         while True:
-            params: dict = {"model": model, "limit": 100}
+            params = QueryParams(model=model, limit=100)
             if cursor:
                 params["cursor"] = cursor
 
