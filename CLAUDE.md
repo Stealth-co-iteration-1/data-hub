@@ -69,6 +69,10 @@ data-hub/
 source .env && dagster dev
 ```
 
+## Git Tags
+
+Tags must follow semantic versioning: `v0.0.0` (e.g., `v0.3.0`, `v1.0.0`)
+
 ## Do Not
 
 - Import psycopg2 in assets — use PostgresResource methods instead
