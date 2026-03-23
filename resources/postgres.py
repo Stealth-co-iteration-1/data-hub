@@ -10,7 +10,7 @@ from typing import Any, Mapping
 import dagster as dg
 import psycopg2
 from psycopg2.extensions import connection
-from psycopg2.extras import execute_values
+from psycopg2.extras import execute_values  # type: ignore[reportUnknownVariableType] - TODO: psycopg2 stubs incomplete
 from pydantic import PrivateAttr
 
 
@@ -36,7 +36,7 @@ class PostgresResource(dg.ConfigurableResource["PostgresResource"]):
 
     @contextmanager
     def yield_for_execution(
-        self, context: dg.InitResourceContext  # noqa: ARG002
+        self, context: dg.InitResourceContext
     ) -> Iterator["PostgresResource"]:
         """Yield database connection for asset execution."""
         del context  # unused, required by Dagster interface

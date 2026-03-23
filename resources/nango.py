@@ -57,7 +57,7 @@ class NangoResource(dg.ConfigurableResource["NangoResource"]):
         while True:
             params = QueryParams(model=model, limit=100)
             if cursor:
-                params["cursor"] = cursor
+                params.set("cursor", cursor)
 
             response = self._client.get(
                 "/records",
