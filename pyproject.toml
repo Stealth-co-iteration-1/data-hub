@@ -20,6 +20,7 @@ dependencies = [
     "dagster>=1.12.20",
     "dagster-postgres>=0.28.20",
     "dagster-webserver>=1.12.20",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +46,4 @@ pythonVersion = "3.12"
 typeCheckingMode = "strict"
 
 [dependency-groups]
-dev = [
-    "httpx>=0.28.1",
-]
+dev = []
