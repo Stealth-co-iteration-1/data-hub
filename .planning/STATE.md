@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: unknown
-stopped_at: Phase 11 context gathered
-last_updated: "2026-03-23T14:22:38.029Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-03-23T14:38:47.703Z"
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-23
-**Status**: Phase 10 complete, ready for Phase 11
+**Status**: Phase 11 complete, ready for Phase 12
 
 ---
 
@@ -33,29 +33,29 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: 10 (dagster-infrastructure) — COMPLETE
-Plan: 1/1 complete
+Phase: 11 (nango-resource-opportunity-asset) — COMPLETE
+Plan: 1 of 1 (DONE)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v0.3): 1
-- Average duration: 12 min
-- Total execution time: 0.2 hours
+- Total plans completed (v0.3): 2
+- Average duration: 7 min
+- Total execution time: 0.23 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 10 | 1 | 12min | 12min |
-| 11 | 0 | - | - |
+| 11 | 1 | 2min | 2min |
 | 12 | 0 | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: 10-01 (12min)
-- Trend: Starting
+- Last 5 plans: 10-01 (12min), 11-01 (2min)
+- Trend: Accelerating
 
 *Updated after each plan completion*
 
@@ -69,6 +69,9 @@ Plan: 1/1 complete
 | Package named dagster_pipelines | Avoid import conflict with dagster library | 10 |
 | PostgreSQL storage in 'dagster' schema | Avoid Alembic conflicts with existing migrations | 10 |
 | EnvVar pattern for resource config | Dagster Cloud compatibility | 10 |
+| httpx for HTTP client | Already in project, better async support than requests | 11 |
+| DELETE+INSERT for full refresh | Idempotent transaction handles removed records | 11 |
+| JSONB with composite PK | salesforce_id + connection_id for multi-tenant support | 11 |
 
 ### Open Questions
 
@@ -104,22 +107,24 @@ Plan: 1/1 complete
 
 ## Session Continuity
 
-**Last session:** 2026-03-23T14:22:38.026Z
-**Stopped at:** Phase 11 context gathered
+**Last session:** 2026-03-23T14:38:47.701Z
+**Stopped at:** Completed 11-01-PLAN.md
 
 ### Next Actions
 
-1. Run `/gsd:plan-phase 11` to plan Nango Resource & Opportunity Asset phase
+1. Run `/gsd:plan-phase 12` to plan Salesforce Assets phase
 
 ### Files Modified This Session
 
-- dagster_pipelines/ (created - entire directory)
-- workspace.yaml (created)
-- dagster.yaml (created)
-- pyproject.toml (updated - Dagster dependencies)
-- .planning/ROADMAP.md (updated)
+- dagster_pipelines/resources/nango.py (created - NangoResource)
+- dagster_pipelines/assets/salesforce/ (created - salesforce_opportunities asset)
+- dagster_pipelines/definitions.py (updated - NangoResource and asset registration)
+- dagster_pipelines/.env.example (updated - Nango env vars)
+- pyproject.toml (updated - httpx to main deps)
 - .planning/STATE.md (updated)
-- .planning/phases/10-dagster-infrastructure/10-01-SUMMARY.md (created)
+- .planning/ROADMAP.md (updated)
+- .planning/REQUIREMENTS.md (updated)
+- .planning/phases/11-nango-resource-opportunity-asset/11-01-SUMMARY.md (created)
 
 ---
 *Last updated: 2026-03-23*
