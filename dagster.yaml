@@ -1,0 +1,20 @@
+# Dagster instance configuration with PostgreSQL storage
+# Schema isolation: uses 'dagster' schema to avoid Alembic conflicts
+#
+# PREREQUISITE: Create schema before first run:
+#   psql -d datahub -c "CREATE SCHEMA dagster;"
+#
+storage:
+  postgres:
+    postgres_db:
+      hostname:
+        env: DAGSTER_PG_HOST
+      username:
+        env: DAGSTER_PG_USER
+      password:
+        env: DAGSTER_PG_PASSWORD
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432
+      params:
+        options: -c search_path=dagster
