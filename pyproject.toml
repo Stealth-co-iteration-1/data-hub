@@ -5,8 +5,10 @@ description = "Dagster-based data pipeline for Salesforce ingestion via Nango"
 requires-python = ">=3.12"
 dependencies = [
     "dagster>=1.12.20",
+    "dagster-dbt>=0.28.20",
     "dagster-postgres>=0.28.20",
     "dagster-webserver>=1.12.20",
+    "dbt-postgres>=1.10.0",
     "httpx>=0.28.1",
     "psycopg2-binary>=2.9.9",
 ]

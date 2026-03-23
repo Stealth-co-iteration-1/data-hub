@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: stg_salesforce__opportunities
+    description: Cleaned and typed Opportunity records
+    columns:
+      - name: salesforce_id
+        description: Primary key from Salesforce
+        tests:
+          - not_null
+      - name: connection_id
+        description: Nango connection identifier
+        tests:
+          - not_null
+      - name: opportunity_name
+        description: Name of the opportunity
+      - name: amount
+        description: Deal value in currency
+      - name: stage_name
+        description: Current sales stage
+      - name: is_closed
+        description: Whether opportunity is closed (won or lost)
+      - name: is_won
+        description: Whether opportunity was won
+
+  - name: stg_salesforce__opportunity_history
+    description: Stage change history for opportunities
+    columns:
+      - name: salesforce_id
+        description: Primary key from Salesforce
+        tests:
+          - not_null
+      - name: opportunity_id
+        description: Related opportunity ID
+
+  - name: stg_salesforce__events
+    description: Calendar events from Salesforce
+    columns:
+      - name: salesforce_id
+        description: Primary key from Salesforce
+        tests:
+          - not_null
+      - name: subject
+        description: Event subject/title
+      - name: starts_at
+        description: Event start timestamp
+      - name: ends_at
+        description: Event end timestamp
+
+  - name: stg_salesforce__tasks
+    description: Tasks from Salesforce
+    columns:
+      - name: salesforce_id
+        description: Primary key from Salesforce
+        tests:
+          - not_null
+      - name: subject
+        description: Task subject/title
+      - name: status
+        description: Task status (Not Started, In Progress, Completed, etc.)
+      - name: priority
+        description: Task priority (High, Normal, Low)

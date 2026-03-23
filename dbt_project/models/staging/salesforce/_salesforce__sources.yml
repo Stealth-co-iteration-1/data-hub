@@ -1,0 +1,54 @@
+version: 2
+
+sources:
+  - name: salesforce_raw
+    description: Raw Salesforce data ingested by Dagster via Nango
+    schema: public
+    tables:
+      - name: salesforce_opportunities
+        description: Raw Opportunity records with JSONB data column
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
+
+      - name: salesforce_opportunity_history
+        description: Raw OpportunityHistory records with JSONB data column
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
+
+      - name: salesforce_events
+        description: Raw Event records with JSONB data column
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
+
+      - name: salesforce_tasks
+        description: Raw Task records with JSONB data column
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
