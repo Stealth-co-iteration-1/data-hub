@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: Dagster Salesforce Pipeline
-status: defining_requirements
+status: ready_to_plan
 stopped_at: null
-last_updated: "2026-03-20"
+last_updated: "2026-03-23"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -14,8 +14,8 @@ progress:
 
 # Project State: data-hub
 
-**Last updated**: 2026-03-20
-**Status**: Defining requirements for v0.3 Dagster Salesforce Pipeline
+**Last updated**: 2026-03-23
+**Status**: Ready to plan Phase 10
 
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 **Core Value**: Data from connected integrations flows reliably into the platform with strict validation — if it's in the database, it's valid.
 
-**Current Focus**: v0.3 Dagster Salesforce Pipeline — Pull-based ingestion using Dagster assets with Nango as auth proxy
+**Current Focus**: v0.3 Dagster Salesforce Pipeline — Pull-based ingestion using Dagster assets with Nango Records API
 
 **Architecture**: Hexagonal (Ports & Adapters) with CQRS pattern
 
@@ -33,31 +33,33 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-20 — Milestone v0.3 started
+Phase: 10 of 12 (Dagster Infrastructure)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-23 — Roadmap created for v0.3
 
-## Session Log
-
-| Session | Date | Accomplishment |
-|---------|------|----------------|
-| 1 | 2026-03-19 | Created roadmap for v0.2.0 (4 phases, 17 requirements mapped) |
-| 2 | 2026-03-19 | Phase 06: Salesforce sync infrastructure (utils.ts, models.ts, types.ts) |
+Progress: [----------] 0%
 
 ## Performance Metrics
 
-| Metric | Value |
-|--------|-------|
-| Total phases | 4 |
-| Plans completed | 0 |
-| Requirements satisfied | 0/17 |
-| Blockers encountered | 0 |
-| Phase 06-salesforce-sync-infrastructure P01 | 12 | 3 tasks | 3 files |
-| Phase 07 P01 | 205 | 3 tasks | 5 files |
-| Phase 08 P01 | 74 | 2 tasks | 2 files |
-| Phase 09 P02 | 2 | 2 tasks | 2 files |
-| Phase 09-activity-syncs P01 | 2 | 2 tasks | 2 files |
+**Velocity:**
+- Total plans completed (v0.3): 0
+- Average duration: N/A
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 10 | 0 | - | - |
+| 11 | 0 | - | - |
+| 12 | 0 | - | - |
+
+**Recent Trend:**
+- Last 5 plans: N/A
+- Trend: Starting
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
@@ -65,18 +67,7 @@ Last activity: 2026-03-20 — Milestone v0.3 started
 
 | Decision | Rationale | Phase |
 |----------|-----------|-------|
-| z.union for nullables (not z.nullable) | Preserves null semantics with no coercion — per CONTEXT.md decision | 06 |
-| types.ts re-exports all models.ts schemas | Single import point for downstream syncs in Phases 7-9 | 06 |
-| buildQuery uses Date.toISOString() for LastModifiedDate | Salesforce accepts ISO 8601 in SOQL WHERE clauses | 06 |
-| id aliasing: lowercase id added to opportunitySchema | Nango ZodModel requires id: ZodString as record key; Salesforce returns Id so we spread and alias at parse time | 07 |
-| Custom buildOpportunityQuery replaces buildQuery | buildQuery does not support relationship field traversal (Account.Name, subqueries) | 07 |
-| nango.lastSyncDate is a property not a method | Nango SDK exposes lastSyncDate as Date or undefined on NangoSyncBase, not a callable function | 07 |
-| Use CreatedDate for incremental cursor in OpportunityHistory | History records are immutable — no LastModifiedDate changes after creation; CreatedDate is the correct cursor | 08 |
-| buildOpportunityHistoryQuery builds SOQL manually | buildQuery utility doesn't support ORDER BY; ORDER BY OpportunityId, CreatedDate ASC is required for velocity derivation | 08 |
-| StartDateTime >= (not >) for Event incremental filter | DateTime boundary — use >= to include events starting at exact sync timestamp, avoiding missed records at boundary | 09 |
-| whoSchema captures only Email field for Event Who relationship | Sufficient for downstream join key resolution without over-fetching Contact/Lead fields | 09 |
-| WhoId and WhatId typed as sfId | null (not sfNullableString) | Preserves 18-char Salesforce ID length constraint while allowing null for Events without linked person/record | 09 |
-| ActivityDate filter uses >= and date-only ISO slice for Tasks | ActivityDate is a Salesforce DATE type (YYYY-MM-DD); must strip time component from lastSyncDate with split('T')[0] | 09 |
+| Nango Records API instead of proxy | TypeScript syncs already deployed; simpler than direct SOQL | Pre-10 |
 
 ### Open Questions
 
@@ -88,7 +79,11 @@ Last activity: 2026-03-20 — Milestone v0.3 started
 
 ### Deferred Items
 
-- (None yet)
+- Hourly schedule (SCHED-01) — deferred to v0.3.x after assets validated
+- Multi-connection partitioning (SCHED-02) — deferred to v0.4
+- Dagster Cloud deployment (DEPLOY-01) — deferred to v0.3.x
+- Incremental loading (ADV-01) — deferred to v0.4
+- Schema drift detection (ADV-02) — deferred to v0.4
 
 ## Tech Debt Log
 
@@ -100,29 +95,26 @@ Last activity: 2026-03-20 — Milestone v0.3 started
 
 ## Milestone History
 
-**v0.1.0** (shipped 2026-03-20): 2 phases, 6 plans — PostgreSQL backend + Query capability
-**v0.0.1** (shipped 2026-03-19): 3 phases, 10 plans — Foundation + Persistence + Transport
+**v0.2.0** (shipped 2026-03-20): 4 phases (6-9), 5 plans — Salesforce Revenue Reporting Syncs
+**v0.1.0** (shipped 2026-03-20): 2 phases (4-5), 6 plans — PostgreSQL backend + Query capability
+**v0.0.1** (shipped 2026-03-19): 3 phases (1-3), 10 plans — Foundation + Persistence + Transport
 
 ---
 
 ## Session Continuity
 
-**Last session:** 2026-03-20T12:43:57.431Z
-**Stopped at:** Completed 09-02-PLAN.md
+**Last session:** 2026-03-23
+**Stopped at:** Created roadmap for v0.3 (3 phases, 10 requirements mapped)
 
 ### Next Actions
 
-1. Phase 09 complete — all 4 phases of v0.2.0 Salesforce Revenue Reporting Syncs done
+1. Run `/gsd:plan-phase 10` to plan Dagster Infrastructure phase
 
 ### Files Modified This Session
 
-- nango-integrations/salesforce/syncs/fetch-tasks.ts (created)
-- nango-integrations/salesforce/syncs/fetch-events.ts (created)
-- nango-integrations/index.ts (updated)
-- .planning/phases/09-activity-syncs/09-01-SUMMARY.md (created)
-- .planning/phases/09-activity-syncs/09-02-SUMMARY.md (created)
+- .planning/ROADMAP.md (created)
 - .planning/STATE.md (updated)
-- .planning/ROADMAP.md (updated)
+- .planning/REQUIREMENTS.md (updated)
 
 ---
-*Last updated: 2026-03-19*
+*Last updated: 2026-03-23*

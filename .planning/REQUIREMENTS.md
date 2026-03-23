@@ -20,10 +20,10 @@ Requirements for Dagster Salesforce Pipeline milestone. Each maps to roadmap pha
 
 ### Salesforce Assets
 
-- [ ] **ASSET-01**: Opportunity asset with full refresh from Nango Records
-- [ ] **ASSET-02**: OpportunityHistory asset with full refresh from Nango Records
-- [ ] **ASSET-03**: Task asset with full refresh from Nango Records
-- [ ] **ASSET-04**: Event asset with full refresh from Nango Records
+- [ ] **ASSET-01**: Opportunity asset with full refresh to dedicated `salesforce_opportunities` table
+- [ ] **ASSET-02**: OpportunityHistory asset with full refresh to dedicated `salesforce_opportunity_history` table
+- [ ] **ASSET-03**: Task asset with full refresh to dedicated `salesforce_tasks` table
+- [ ] **ASSET-04**: Event asset with full refresh to dedicated `salesforce_events` table
 
 ### Observability
 
@@ -64,22 +64,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DAGSTER-01 | TBD | Pending |
-| DAGSTER-02 | TBD | Pending |
-| DAGSTER-03 | TBD | Pending |
-| NANGO-01 | TBD | Pending |
-| NANGO-02 | TBD | Pending |
-| ASSET-01 | TBD | Pending |
-| ASSET-02 | TBD | Pending |
-| ASSET-03 | TBD | Pending |
-| ASSET-04 | TBD | Pending |
-| OBS-01 | TBD | Pending |
+| DAGSTER-01 | Phase 10 | Pending |
+| DAGSTER-02 | Phase 10 | Pending |
+| DAGSTER-03 | Phase 10 | Pending |
+| NANGO-01 | Phase 11 | Pending |
+| NANGO-02 | Phase 11 | Pending |
+| ASSET-01 | Phase 11 | Pending |
+| ASSET-02 | Phase 12 | Pending |
+| ASSET-03 | Phase 12 | Pending |
+| ASSET-04 | Phase 12 | Pending |
+| OBS-01 | Phase 11 | Pending |
 
 **Coverage:**
 - v0.3 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 (pending roadmap)
+- Mapped to phases: 10
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-23*
-*Last updated: 2026-03-23 after initial definition*
+*Last updated: 2026-03-23 after roadmap update (dedicated tables per asset)*
