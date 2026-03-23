@@ -94,7 +94,11 @@ All phases complete (10-12), all requirements satisfied (10/10)
 
 | Item | Severity | Added | Phase |
 |------|----------|-------|-------|
-| (None) | - | - | - |
+| psycopg2 incomplete type stubs | Low | 2026-03-23 | - |
+
+### Pending Todos
+
+3 pending — see `.planning/todos/pending/`
 
 ---
 
