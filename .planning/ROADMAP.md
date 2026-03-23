@@ -54,7 +54,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md — NangoResource with paginated get_records and salesforce_opportunities asset with full refresh
+- [x] 11-01-PLAN.md — NangoResource with paginated get_records and salesforce_opportunities asset with full refresh
 
 ### Phase 12: Remaining Salesforce Assets
 **Goal**: OpportunityHistory, Task, Event assets following established Opportunity pattern
@@ -64,10 +64,10 @@ Plans:
   1. OpportunityHistory asset materializes and persists records to `salesforce_opportunity_history` table with row count metadata
   2. Task asset materializes and persists records to `salesforce_tasks` table with row count metadata
   3. Event asset materializes and persists records to `salesforce_events` table with row count metadata
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 12-01: [TBD]
+- [ ] 12-01-PLAN.md — Create OpportunityHistory, Task, Event assets following opportunity.py pattern
 
 ## Progress
 
@@ -77,8 +77,8 @@ Phases execute in numeric order: 10 -> 10.1 -> 10.2 -> 11 -> 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 10. Dagster Infrastructure | v0.3 | 1/1 | Complete | 2026-03-23 |
-| 11. Nango Resource & Opportunity Asset | 1/1 | Complete    | 2026-03-23 | - |
-| 12. Remaining Salesforce Assets | v0.3 | 0/? | Not started | - |
+| 11. Nango Resource & Opportunity Asset | v0.3 | 1/1 | Complete | 2026-03-23 |
+| 12. Remaining Salesforce Assets | v0.3 | 0/1 | Planned | - |
 
 ---
 *Roadmap created: 2026-03-23*
