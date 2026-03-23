@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: unknown
-stopped_at: Phase 12 context gathered
-last_updated: "2026-03-23T14:51:12.894Z"
+stopped_at: Completed 12-01-PLAN.md - all Salesforce assets
+last_updated: "2026-03-23T15:00:35.631Z"
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 3
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State: data-hub
 
 **Last updated**: 2026-03-23
-**Status**: Phase 11 complete, ready for Phase 12
+**Status**: Phase 12 complete, v0.3 milestone complete
 
 ---
 
@@ -33,14 +33,14 @@ See: .planning/PROJECT.md (updated 2026-03-20)
 
 ## Current Position
 
-Phase: 11 (nango-resource-opportunity-asset) — COMPLETE
-Plan: 1 of 1 (DONE)
+Phase: 12 (remaining-salesforce-assets) — COMPLETE
+Plan: 1 of 1 (COMPLETE)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v0.3): 2
+- Total plans completed (v0.3): 3
 - Average duration: 7 min
 - Total execution time: 0.23 hours
 
@@ -50,11 +50,11 @@ Plan: 1 of 1 (DONE)
 |-------|-------|-------|----------|
 | 10 | 1 | 12min | 12min |
 | 11 | 1 | 2min | 2min |
-| 12 | 0 | - | - |
+| 12 | 1 | 2min | 2min |
 
 **Recent Trend:**
 
-- Last 5 plans: 10-01 (12min), 11-01 (2min)
+- Last 5 plans: 10-01 (12min), 11-01 (2min), 12-01 (2min)
 - Trend: Accelerating
 
 *Updated after each plan completion*
@@ -72,6 +72,7 @@ Plan: 1 of 1 (DONE)
 | httpx for HTTP client | Already in project, better async support than requests | 11 |
 | DELETE+INSERT for full refresh | Idempotent transaction handles removed records | 11 |
 | JSONB with composite PK | salesforce_id + connection_id for multi-tenant support | 11 |
+| Exact pattern replication for new assets | Copy opportunity.py pattern for consistency | 12 |
 
 ### Open Questions
 
@@ -107,24 +108,25 @@ Plan: 1 of 1 (DONE)
 
 ## Session Continuity
 
-**Last session:** 2026-03-23T14:51:12.890Z
-**Stopped at:** Phase 12 context gathered
+**Last session:** 2026-03-23T15:00:35.628Z
+**Stopped at:** Completed 12-01-PLAN.md - all Salesforce assets
 
 ### Next Actions
 
-1. Run `/gsd:plan-phase 12` to plan Salesforce Assets phase
+1. v0.3 milestone complete - all Salesforce assets available
+2. Consider scheduling (v0.3.x) or incremental loading (v0.4)
 
 ### Files Modified This Session
 
-- dagster_pipelines/resources/nango.py (created - NangoResource)
-- dagster_pipelines/assets/salesforce/ (created - salesforce_opportunities asset)
-- dagster_pipelines/definitions.py (updated - NangoResource and asset registration)
-- dagster_pipelines/.env.example (updated - Nango env vars)
-- pyproject.toml (updated - httpx to main deps)
+- dagster_pipelines/assets/salesforce/opportunity_history.py (created - OpportunityHistory asset)
+- dagster_pipelines/assets/salesforce/task.py (created - Task asset)
+- dagster_pipelines/assets/salesforce/event.py (created - Event asset)
+- dagster_pipelines/assets/salesforce/__init__.py (updated - exports all 4 assets)
+- dagster_pipelines/definitions.py (updated - registers all 4 assets)
 - .planning/STATE.md (updated)
 - .planning/ROADMAP.md (updated)
 - .planning/REQUIREMENTS.md (updated)
-- .planning/phases/11-nango-resource-opportunity-asset/11-01-SUMMARY.md (created)
+- .planning/phases/12-remaining-salesforce-assets/12-01-SUMMARY.md (created)
 
 ---
 *Last updated: 2026-03-23*

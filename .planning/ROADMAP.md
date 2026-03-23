@@ -25,7 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 10: Dagster Infrastructure** - Project scaffold with PostgreSQL storage and local dev
 - [x] **Phase 11: Nango Resource & Opportunity Asset** - NangoResource wrapping Records API, first asset validates pattern (completed 2026-03-23)
-- [ ] **Phase 12: Remaining Salesforce Assets** - OpportunityHistory, Task, Event assets
+- [x] **Phase 12: Remaining Salesforce Assets** - OpportunityHistory, Task, Event assets (completed 2026-03-23)
 
 ## Phase Details
 
@@ -78,7 +78,7 @@ Phases execute in numeric order: 10 -> 10.1 -> 10.2 -> 11 -> 12
 |-------|-----------|----------------|--------|-----------|
 | 10. Dagster Infrastructure | v0.3 | 1/1 | Complete | 2026-03-23 |
 | 11. Nango Resource & Opportunity Asset | v0.3 | 1/1 | Complete | 2026-03-23 |
-| 12. Remaining Salesforce Assets | v0.3 | 0/1 | Planned | - |
+| 12. Remaining Salesforce Assets | 1/1 | Complete   | 2026-03-23 | - |
 
 ---
 *Roadmap created: 2026-03-23*

@@ -21,9 +21,9 @@ Requirements for Dagster Salesforce Pipeline milestone. Each maps to roadmap pha
 ### Salesforce Assets
 
 - [x] **ASSET-01**: Opportunity asset with full refresh to dedicated `salesforce_opportunities` table
-- [ ] **ASSET-02**: OpportunityHistory asset with full refresh to dedicated `salesforce_opportunity_history` table
-- [ ] **ASSET-03**: Task asset with full refresh to dedicated `salesforce_tasks` table
-- [ ] **ASSET-04**: Event asset with full refresh to dedicated `salesforce_events` table
+- [x] **ASSET-02**: OpportunityHistory asset with full refresh to dedicated `salesforce_opportunity_history` table
+- [x] **ASSET-03**: Task asset with full refresh to dedicated `salesforce_tasks` table
+- [x] **ASSET-04**: Event asset with full refresh to dedicated `salesforce_events` table
 
 ### Observability
 
@@ -70,9 +70,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NANGO-01 | Phase 11 | Complete |
 | NANGO-02 | Phase 11 | Complete |
 | ASSET-01 | Phase 11 | Complete |
-| ASSET-02 | Phase 12 | Pending |
-| ASSET-03 | Phase 12 | Pending |
-| ASSET-04 | Phase 12 | Pending |
+| ASSET-02 | Phase 12 | Complete |
+| ASSET-03 | Phase 12 | Complete |
+| ASSET-04 | Phase 12 | Complete |
 | OBS-01 | Phase 11 | Complete |
 
 **Coverage:**
