@@ -60,7 +60,33 @@ data-hub/
 ├── definitions.py          # Dagster entry point
 ├── assets/salesforce/      # One file per Salesforce object (no psycopg2!)
 ├── resources/              # PostgresResource (psycopg2 bridge), NangoResource
+├── dbt_project/            # dbt models for data transformation
+├── reports/                # Streamlit dashboard
 ├── nango-integrations/     # TypeScript Nango syncs (separate)
+```
+
+## Database Schema Layout
+
+All schemas follow `public_` prefix convention for consistency:
+
+| Schema | Owner | Contents |
+|--------|-------|----------|
+| `public_raw` | Dagster | Raw Salesforce data (JSONB) |
+| `public_staging` | dbt | Cleaned/typed staging views |
+| `public_marts` | dbt | Fact and dimension tables |
+| `public_reports` | dbt | Pre-aggregated report tables |
+
+**Data flow:**
+```
+Nango → Dagster → public_raw.salesforce_*
+                      ↓
+                  dbt run
+                      ↓
+         public_staging.stg_salesforce__*
+                      ↓
+         public_marts.fct_*, dim_*
+                      ↓
+         public_reports.rpt_*
 ```
 
 ## Running Locally

@@ -3,13 +3,10 @@ version: 2
 sources:
   - name: salesforce_raw
     description: Raw Salesforce data ingested by Dagster via Nango
-    schema: public
+    schema: public_raw
     tables:
       - name: salesforce_opportunities
         description: Raw Opportunity records with JSONB data column
-        meta:
-          dagster:
-            asset_key: ["salesforce_opportunities"]
         columns:
           - name: salesforce_id
             description: Salesforce record ID
@@ -20,11 +17,12 @@ sources:
           - name: synced_at
             description: Timestamp when record was synced
 
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_opportunities"]
       - name: salesforce_opportunity_history
         description: Raw OpportunityHistory records with JSONB data column
-        meta:
-          dagster:
-            asset_key: ["salesforce_opportunity_history"]
         columns:
           - name: salesforce_id
             description: Salesforce record ID
@@ -35,11 +33,12 @@ sources:
           - name: synced_at
             description: Timestamp when record was synced
 
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_opportunity_history"]
       - name: salesforce_events
         description: Raw Event records with JSONB data column
-        meta:
-          dagster:
-            asset_key: ["salesforce_events"]
         columns:
           - name: salesforce_id
             description: Salesforce record ID
@@ -50,11 +49,12 @@ sources:
           - name: synced_at
             description: Timestamp when record was synced
 
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_events"]
       - name: salesforce_tasks
         description: Raw Task records with JSONB data column
-        meta:
-          dagster:
-            asset_key: ["salesforce_tasks"]
         columns:
           - name: salesforce_id
             description: Salesforce record ID
@@ -64,3 +64,7 @@ sources:
             description: Full Salesforce record as JSONB
           - name: synced_at
             description: Timestamp when record was synced
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_tasks"]

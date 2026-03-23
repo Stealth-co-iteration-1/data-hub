@@ -11,7 +11,9 @@ from resources.postgres import PostgresResource
 
 # Table DDL - executed on first materialization
 CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS salesforce_opportunities (
+CREATE SCHEMA IF NOT EXISTS public_raw;
+
+CREATE TABLE IF NOT EXISTS public_raw.salesforce_opportunities (
     salesforce_id TEXT NOT NULL,
     connection_id TEXT NOT NULL,
     data JSONB NOT NULL,
@@ -41,7 +43,7 @@ def salesforce_opportunities(
     # Full refresh: DELETE + INSERT in transaction
     with postgres_db.transaction():
         postgres_db.execute(
-            "DELETE FROM salesforce_opportunities WHERE connection_id = %s",
+            "DELETE FROM public_raw.salesforce_opportunities WHERE connection_id = %s",
             (connection_id,),
         )
 
@@ -51,7 +53,7 @@ def salesforce_opportunities(
             ]
 
             postgres_db.bulk_insert(
-                """INSERT INTO salesforce_opportunities
+                """INSERT INTO public_raw.salesforce_opportunities
                         (salesforce_id, connection_id, data, synced_at) VALUES %s""",
                 values,
                 "(%s, %s, %s, NOW())",

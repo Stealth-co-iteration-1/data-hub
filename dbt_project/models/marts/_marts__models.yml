@@ -67,7 +67,8 @@ models:
         description: Either 'event' or 'task'
         tests:
           - accepted_values:
-              values: ['event', 'task']
+              arguments:
+                values: ['event', 'task']
 
   # Reports
   - name: rpt_sales_velocity
