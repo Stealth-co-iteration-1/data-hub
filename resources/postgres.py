@@ -28,7 +28,7 @@ class PostgresResource(dg.ConfigurableResource["PostgresResource"]):
         finally:
             conn.close()
 
-    def execute(self, query: str) -> list[dict]:
+    def execute(self, query: str) -> list[dict[str, Any]]:
         """Execute SQL query and return results as list of dicts."""
         with self._connection.cursor() as cur:
             cur.execute(query)
