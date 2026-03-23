@@ -20,6 +20,15 @@ models:
     staging:
       +materialized: view
       +schema: staging
+    intermediate:
+      +materialized: ephemeral
     marts:
-      +materialized: table
-      +schema: marts
+      dimensions:
+        +materialized: table
+        +schema: marts
+      facts:
+        +materialized: table
+        +schema: marts
+      reports:
+        +materialized: table
+        +schema: reports

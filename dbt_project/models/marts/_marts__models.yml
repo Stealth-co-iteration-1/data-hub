@@ -1,0 +1,107 @@
+version: 2
+
+models:
+  # Dimensions
+  - name: dim_date
+    description: Date dimension with fiscal periods, week/month boundaries, and relative flags
+    columns:
+      - name: date_day
+        description: Primary key - the calendar date
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_owners
+    description: Sales rep dimension extracted from opportunity owners
+    columns:
+      - name: owner_id
+        description: Salesforce User ID
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_accounts
+    description: Account dimension extracted from opportunities
+    columns:
+      - name: account_id
+        description: Salesforce Account ID
+        tests:
+          - unique
+          - not_null
+
+  # Facts
+  - name: fct_opportunities
+    description: >
+      Fact table with one row per opportunity. Includes activity counts,
+      days calculations, and opportunity status.
+    columns:
+      - name: salesforce_id
+        description: Salesforce Opportunity ID
+        tests:
+          - not_null
+      - name: opportunity_status
+        description: Derived status - Won, Lost, or Open
+
+  - name: fct_opportunity_stages
+    description: >
+      Stage transition history. One row per stage change with time spent
+      in previous stage.
+    columns:
+      - name: salesforce_id
+        description: Salesforce OpportunityHistory ID
+        tests:
+          - not_null
+      - name: days_in_previous_stage
+        description: Days spent in the previous stage before this transition
+
+  - name: fct_activities
+    description: >
+      Unified activity fact combining events and tasks.
+      Grain: one row per activity.
+    columns:
+      - name: salesforce_id
+        description: Salesforce Event or Task ID
+        tests:
+          - not_null
+      - name: activity_type
+        description: Either 'event' or 'task'
+        tests:
+          - accepted_values:
+              values: ['event', 'task']
+
+  # Reports
+  - name: rpt_sales_velocity
+    description: >
+      Sales velocity metrics showing average time in each pipeline stage.
+      Identifies bottleneck stages.
+    columns:
+      - name: stage_name
+        description: Pipeline stage
+        tests:
+          - unique
+          - not_null
+      - name: is_bottleneck
+        description: Flag indicating stage takes longer than average
+
+  - name: rpt_win_rate_by_owner
+    description: >
+      Win rates and performance metrics by sales rep.
+      Includes performance tier classification.
+    columns:
+      - name: owner_id
+        description: Sales rep ID
+        tests:
+          - unique
+          - not_null
+      - name: performance_tier
+        description: High Performer, Average, Needs Coaching, or No Closed Deals
+
+  - name: rpt_activity_coverage
+    description: >
+      Analysis of activity volume correlation with win rates.
+      Groups opportunities by activity count buckets.
+
+  - name: rpt_pipeline_snapshot
+    description: >
+      Current pipeline health by stage and close date horizon.
+      Includes weighted pipeline calculations.
