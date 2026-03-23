@@ -41,31 +41,31 @@ Data from connected integrations flows reliably into the platform with strict va
 - [x] Dagster local development setup (dagster dev) — *Validated in Phase 10: Dagster Infrastructure*
 - [x] NangoResource for Nango Records API — *Validated in Phase 11: Nango Resource & Opportunity Asset*
 - [x] Salesforce Opportunity asset with full refresh — *Validated in Phase 11: Nango Resource & Opportunity Asset*
-- [ ] Salesforce OpportunityHistory asset with full refresh
-- [ ] Salesforce Task asset with full refresh
-- [ ] Salesforce Event asset with full refresh
+- [x] Salesforce OpportunityHistory asset with full refresh — *Validated in Phase 12: Remaining Salesforce Assets*
+- [x] Salesforce Task asset with full refresh — *Validated in Phase 12: Remaining Salesforce Assets*
+- [x] Salesforce Event asset with full refresh — *Validated in Phase 12: Remaining Salesforce Assets*
 - [x] Raw JSON persistence to PostgreSQL — *Validated in Phase 11: Nango Resource & Opportunity Asset*
 - [x] Dagster Cloud compatible project structure — *Validated in Phase 10: Dagster Infrastructure*
 
-## Current Milestone: v0.3 Dagster Salesforce Pipeline
+## Completed Milestone: v0.3 Dagster Salesforce Pipeline
 
 **Goal:** Pull-based Salesforce data ingestion using Dagster assets, with Nango as the authentication proxy.
 
-**Target features:**
-- Dagster local dev environment
-- Nango proxy client for Salesforce SOQL queries
-- One asset per Salesforce model (Opportunity, OpportunityHistory, Task, Event)
-- Full refresh strategy (incremental deferred)
-- Raw JSON to PostgreSQL
+**Delivered:**
+- Dagster local dev environment with PostgreSQL storage
+- NangoResource for Nango Records API with pagination
+- 4 Salesforce assets (Opportunity, OpportunityHistory, Task, Event)
+- Full refresh strategy with DELETE+INSERT idempotency
+- Raw JSON persistence to PostgreSQL
 
-### Out of Scope
+### Deferred to Future Milestones
 
-- Event consumers — deferred to future milestone
-- Schema drift detection — deferred to future milestone
-- Real-time streaming — batch/webhook model for now
-- Incremental/delta loads — full refresh first, optimize later
-- Bucket storage for raw data — PostgreSQL for now
-- Replacing webhook ingestion path — parallel validation
+- Event consumers
+- Schema drift detection
+- Real-time streaming
+- Incremental/delta loads
+- Bucket storage for raw data
+- Replacing webhook ingestion path
 
 ## Context
 
@@ -149,20 +149,21 @@ Data from connected integrations flows reliably into the platform with strict va
 - Event_id generation from payload hash for idempotent sync tracking
 - Audit log error status tracking for failed syncs
 
-## Current State (v0.3 In Progress)
+## Current State (v0.3 Shipped)
 
-**Started:** 2026-03-23
-**Codebase:** ~6,100 LOC Python + 729 LOC TypeScript (Nango syncs)
+**Shipped:** 2026-03-23
+**Codebase:** ~6,200 LOC Python + 729 LOC TypeScript (Nango syncs)
 **Tech stack:** Python 3.12+, FastAPI, SQLAlchemy 2.0 async, asyncpg, Dagster 1.12+, httpx, structlog, prometheus_client, Pydantic, Alembic
 
 **Capabilities (added in v0.3):**
 - Dagster orchestration infrastructure with PostgreSQL storage (Phase 10)
 - NangoResource ConfigurableResource with paginated Records API fetching (Phase 11)
-- salesforce_opportunities asset with DELETE+INSERT full refresh idempotency (Phase 11)
+- 4 Salesforce assets with DELETE+INSERT full refresh idempotency:
+  - `salesforce_opportunities` (Phase 11)
+  - `salesforce_opportunity_history` (Phase 12)
+  - `salesforce_tasks` (Phase 12)
+  - `salesforce_events` (Phase 12)
 - MaterializeResult row count metadata for Dagster UI observability (Phase 11)
 
-**Remaining for v0.3:**
-- OpportunityHistory, Task, Event assets following Opportunity pattern (Phase 12)
-
 ---
-*Last updated: 2026-03-23 after Phase 11 complete*
+*Last updated: 2026-03-23 after v0.3 milestone complete*
