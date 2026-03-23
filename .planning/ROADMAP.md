@@ -51,10 +51,10 @@ Plans:
   2. Opportunity asset materializes successfully and persists records to `salesforce_opportunities` table
   3. MaterializeResult includes row count metadata visible in Dagster UI
   4. Running asset twice produces same row count (idempotent full refresh)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 11-01: [TBD]
+- [ ] 11-01-PLAN.md — NangoResource with paginated get_records and salesforce_opportunities asset with full refresh
 
 ### Phase 12: Remaining Salesforce Assets
 **Goal**: OpportunityHistory, Task, Event assets following established Opportunity pattern
@@ -77,7 +77,7 @@ Phases execute in numeric order: 10 -> 10.1 -> 10.2 -> 11 -> 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 10. Dagster Infrastructure | v0.3 | 1/1 | Complete | 2026-03-23 |
-| 11. Nango Resource & Opportunity Asset | v0.3 | 0/? | Not started | - |
+| 11. Nango Resource & Opportunity Asset | v0.3 | 0/1 | Not started | - |
 | 12. Remaining Salesforce Assets | v0.3 | 0/? | Not started | - |
 
 ---
