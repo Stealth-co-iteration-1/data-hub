@@ -20,7 +20,7 @@ sources:
         config:
           meta:
             dagster:
-              asset_key: ["salesforce_opportunities"]
+              asset_key: ["salesforce_raw", "salesforce_opportunities"]
       - name: salesforce_opportunity_history
         description: Raw OpportunityHistory records with JSONB data column
         columns:
@@ -36,7 +36,7 @@ sources:
         config:
           meta:
             dagster:
-              asset_key: ["salesforce_opportunity_history"]
+              asset_key: ["salesforce_raw", "salesforce_opportunity_history"]
       - name: salesforce_events
         description: Raw Event records with JSONB data column
         columns:
@@ -52,7 +52,7 @@ sources:
         config:
           meta:
             dagster:
-              asset_key: ["salesforce_events"]
+              asset_key: ["salesforce_raw", "salesforce_events"]
       - name: salesforce_tasks
         description: Raw Task records with JSONB data column
         columns:
@@ -67,4 +67,4 @@ sources:
         config:
           meta:
             dagster:
-              asset_key: ["salesforce_tasks"]
+              asset_key: ["salesforce_raw", "salesforce_tasks"]
