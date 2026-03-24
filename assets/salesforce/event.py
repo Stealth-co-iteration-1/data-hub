@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public_raw.salesforce_events (
 """
 
 
-@dg.asset
+@dg.asset(group_name="salesforce_raw")
 def salesforce_events(
     nango: NangoResource,
     postgres_db: PostgresResource,
