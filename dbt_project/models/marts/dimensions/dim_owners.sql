@@ -4,22 +4,28 @@
     )
 }}
 
--- Extract unique owners from opportunities
-with opportunity_owners as (
-    select distinct
-        owner_id,
-        owner_name
-    from {{ ref('stg_salesforce__opportunities') }}
-    where owner_id is not null
-),
-
--- Could add more owner sources here (tasks, events) if needed
-all_owners as (
-    select * from opportunity_owners
+-- Owner/Rep dimension from the dedicated users staging model
+with users as (
+    select * from {{ ref('stg_salesforce__users') }}
 )
 
 select
-    owner_id,
-    owner_name,
+    salesforce_id as owner_id,
+    full_name as owner_name,
+    first_name,
+    last_name,
+    email,
+    username,
+    title,
+    department,
+    division,
+    is_active,
+    manager_id,
+    manager_name,
+    manager_email,
+    profile_name,
+    last_login_at,
+    created_at,
+    updated_at,
     current_timestamp as refreshed_at
-from all_owners
+from users

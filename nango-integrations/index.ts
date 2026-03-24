@@ -1,8 +1,7 @@
-import './github/syncs/fetch-issues.js';
-import './github/actions/create-issue.js';
-import './github/on-events/pre-connection-deletion.js';
-import './github/syncs/list-files.js';
 import './salesforce/syncs/fetch-opportunities.js';
 import './salesforce/syncs/fetch-opportunity-history.js';
 import './salesforce/syncs/fetch-tasks.js';
 import './salesforce/syncs/fetch-events.js';
+import './salesforce/syncs/fetch-contacts.js';
+import './salesforce/syncs/fetch-accounts.js';
+import './salesforce/syncs/fetch-users.js';

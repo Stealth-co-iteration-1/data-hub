@@ -1,162 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "GithubIssue": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "owner": {
-          "type": "string"
-        },
-        "repo": {
-          "type": "string"
-        },
-        "issue_number": {
-          "type": "number"
-        },
-        "title": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "author": {
-          "type": "string"
-        },
-        "author_id": {
-          "type": "number"
-        },
-        "body": {
-          "type": "string"
-        },
-        "date_created": {
-          "type": "string"
-        },
-        "date_last_modified": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "owner",
-        "repo",
-        "issue_number",
-        "title",
-        "state",
-        "author",
-        "author_id",
-        "body",
-        "date_created",
-        "date_last_modified"
-      ],
-      "additionalProperties": false,
-      "description": "! ** DEPRECATION NOTICE ** ! This file will stop being generated in future versions of nango. ! For access to function types, please export types directly from your code. ! You can leverage `zod.infer` to generate types from your zod schemas. ! See the official zod documentation: https://zod.dev/basics?id=inferring-types"
-    },
-    "SyncMetadata_github_fetchissues": {
-      "type": "null"
-    },
-    "ActionInput_github_createissue": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "owner": {
-          "type": "string"
-        },
-        "repo": {
-          "type": "string"
-        },
-        "issue_number": {
-          "type": "number"
-        },
-        "title": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "author": {
-          "type": "string"
-        },
-        "author_id": {
-          "type": "number"
-        },
-        "body": {
-          "type": "string"
-        },
-        "date_created": {
-          "type": "string"
-        },
-        "date_last_modified": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "owner",
-        "repo",
-        "issue_number",
-        "title",
-        "state",
-        "author",
-        "author_id",
-        "body",
-        "date_created",
-        "date_last_modified"
-      ],
-      "additionalProperties": false
-    },
-    "ActionOutput_github_createissue": {
-      "type": "null"
-    },
-    "GithubRepoFile": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        },
-        "last_modified_date": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "url",
-        "last_modified_date"
-      ],
-      "additionalProperties": false
-    },
-    "SyncMetadata_github_listfiles": {
-      "type": "object",
-      "properties": {
-        "owner": {
-          "type": "string"
-        },
-        "repo": {
-          "type": "string"
-        },
-        "branch": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "owner",
-        "repo",
-        "branch"
-      ],
-      "additionalProperties": false
-    },
     "Opportunity": {
       "type": "object",
       "properties": {
@@ -361,7 +205,8 @@
         "Owner",
         "OpportunityContactRoles"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "! ** DEPRECATION NOTICE ** ! This file will stop being generated in future versions of nango. ! For access to function types, please export types directly from your code. ! You can leverage `zod.infer` to generate types from your zod schemas. ! See the official zod documentation: https://zod.dev/basics?id=inferring-types"
     },
     "SyncMetadata_salesforce_fetchopportunities": {
       "type": "null"
@@ -680,7 +525,504 @@
     },
     "SyncMetadata_salesforce_fetchevents": {
       "type": "null"
+    },
+    "Contact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "FirstName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "LastName": {
+          "type": "string"
+        },
+        "Email": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Phone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "MobilePhone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Department": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "AccountId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OwnerId": {
+          "type": "string"
+        },
+        "MailingCity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "MailingState": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "MailingCountry": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "LeadSource": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "LastModifiedDate": {
+          "type": "string"
+        },
+        "Account": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "Industry": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Name",
+                "Industry"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Owner": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "Name",
+            "Email"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "FirstName",
+        "LastName",
+        "Email",
+        "Phone",
+        "MobilePhone",
+        "Title",
+        "Department",
+        "AccountId",
+        "OwnerId",
+        "MailingCity",
+        "MailingState",
+        "MailingCountry",
+        "LeadSource",
+        "CreatedDate",
+        "LastModifiedDate",
+        "Account",
+        "Owner"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchcontacts": {
+      "type": "null"
+    },
+    "Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "Type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Industry": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Website": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Phone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "AnnualRevenue": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "NumberOfEmployees": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "OwnerId": {
+          "type": "string"
+        },
+        "ParentId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "BillingCity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "BillingState": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "BillingCountry": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Rating": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "LastModifiedDate": {
+          "type": "string"
+        },
+        "Owner": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "Name",
+            "Email"
+          ],
+          "additionalProperties": false
+        },
+        "Parent": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Name"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "Name",
+        "Type",
+        "Industry",
+        "Description",
+        "Website",
+        "Phone",
+        "AnnualRevenue",
+        "NumberOfEmployees",
+        "OwnerId",
+        "ParentId",
+        "BillingCity",
+        "BillingState",
+        "BillingCountry",
+        "Rating",
+        "CreatedDate",
+        "LastModifiedDate",
+        "Owner",
+        "Parent"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchaccounts": {
+      "type": "null"
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Id": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "FirstName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "LastName": {
+          "type": "string"
+        },
+        "Email": {
+          "type": "string"
+        },
+        "Username": {
+          "type": "string"
+        },
+        "Alias": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Department": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Division": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CompanyName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "IsActive": {
+          "type": "boolean"
+        },
+        "ManagerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ProfileId": {
+          "type": "string"
+        },
+        "UserRoleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "CreatedDate": {
+          "type": "string"
+        },
+        "LastModifiedDate": {
+          "type": "string"
+        },
+        "LastLoginDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Manager": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "Email": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Name",
+                "Email"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "Profile": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "Name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "Name"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "Id",
+        "Name",
+        "FirstName",
+        "LastName",
+        "Email",
+        "Username",
+        "Alias",
+        "Title",
+        "Department",
+        "Division",
+        "CompanyName",
+        "IsActive",
+        "ManagerId",
+        "ProfileId",
+        "UserRoleId",
+        "CreatedDate",
+        "LastModifiedDate",
+        "LastLoginDate",
+        "Manager",
+        "Profile"
+      ],
+      "additionalProperties": false
+    },
+    "SyncMetadata_salesforce_fetchusers": {
+      "type": "null"
     }
   },
-  "$comment": "This file was generated by Nango (v0.69.45)"
+  "$comment": "This file was generated by Nango (v0.69.46)"
 }

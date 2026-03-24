@@ -1,262 +1,5 @@
 [
   {
-    "providerConfigKey": "github",
-    "actions": [
-      {
-        "type": "action",
-        "description": "Create an issue in GitHub",
-        "endpoint": {
-          "method": "POST",
-          "path": "/example/github/issues",
-          "group": "Issues"
-        },
-        "input": "ActionInput_github_createissue",
-        "name": "create-issue",
-        "output": [
-          "ActionOutput_github_createissue"
-        ],
-        "scopes": [],
-        "usedModels": [
-          "ActionInput_github_createissue",
-          "ActionOutput_github_createissue"
-        ],
-        "version": "1.0.0",
-        "json_schema": {
-          "definitions": {
-            "ActionInput_github_createissue": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "owner": {
-                  "type": "string"
-                },
-                "repo": {
-                  "type": "string"
-                },
-                "issue_number": {
-                  "type": "number"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "state": {
-                  "type": "string"
-                },
-                "author": {
-                  "type": "string"
-                },
-                "author_id": {
-                  "type": "number"
-                },
-                "body": {
-                  "type": "string"
-                },
-                "date_created": {
-                  "type": "string"
-                },
-                "date_last_modified": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "owner",
-                "repo",
-                "issue_number",
-                "title",
-                "state",
-                "author",
-                "author_id",
-                "body",
-                "date_created",
-                "date_last_modified"
-              ],
-              "additionalProperties": false
-            },
-            "ActionOutput_github_createissue": {
-              "type": "null"
-            }
-          }
-        }
-      }
-    ],
-    "syncs": [
-      {
-        "type": "sync",
-        "description": "Fetches the Github issues from all a user's repositories.",
-        "auto_start": true,
-        "endpoints": [
-          {
-            "method": "GET",
-            "path": "/example/github/issues",
-            "group": "Issues"
-          }
-        ],
-        "input": "SyncMetadata_github_fetchissues",
-        "name": "fetch-issues",
-        "output": [
-          "GithubIssue"
-        ],
-        "runs": "every hour",
-        "scopes": [],
-        "sync_type": "full",
-        "track_deletes": false,
-        "usedModels": [
-          "GithubIssue",
-          "SyncMetadata_github_fetchissues"
-        ],
-        "version": "1.0.0",
-        "webhookSubscriptions": [],
-        "json_schema": {
-          "definitions": {
-            "GithubIssue": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "owner": {
-                  "type": "string"
-                },
-                "repo": {
-                  "type": "string"
-                },
-                "issue_number": {
-                  "type": "number"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "state": {
-                  "type": "string"
-                },
-                "author": {
-                  "type": "string"
-                },
-                "author_id": {
-                  "type": "number"
-                },
-                "body": {
-                  "type": "string"
-                },
-                "date_created": {
-                  "type": "string"
-                },
-                "date_last_modified": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "owner",
-                "repo",
-                "issue_number",
-                "title",
-                "state",
-                "author",
-                "author_id",
-                "body",
-                "date_created",
-                "date_last_modified"
-              ],
-              "additionalProperties": false
-            },
-            "SyncMetadata_github_fetchissues": {
-              "type": "null"
-            }
-          }
-        }
-      },
-      {
-        "type": "sync",
-        "description": "Lists all the files of a Github repo given a specific branch",
-        "auto_start": false,
-        "endpoints": [
-          {
-            "method": "GET",
-            "path": "/files",
-            "group": "Files"
-          }
-        ],
-        "input": "SyncMetadata_github_listfiles",
-        "name": "list-files",
-        "output": [
-          "GithubRepoFile"
-        ],
-        "runs": "every hour",
-        "scopes": [
-          "repo"
-        ],
-        "sync_type": "incremental",
-        "track_deletes": false,
-        "usedModels": [
-          "GithubRepoFile",
-          "SyncMetadata_github_listfiles"
-        ],
-        "version": "2.0.1",
-        "webhookSubscriptions": [],
-        "json_schema": {
-          "definitions": {
-            "GithubRepoFile": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "url": {
-                  "type": "string"
-                },
-                "last_modified_date": {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              },
-              "required": [
-                "id",
-                "name",
-                "url",
-                "last_modified_date"
-              ],
-              "additionalProperties": false
-            },
-            "SyncMetadata_github_listfiles": {
-              "type": "object",
-              "properties": {
-                "owner": {
-                  "type": "string"
-                },
-                "repo": {
-                  "type": "string"
-                },
-                "branch": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "owner",
-                "repo",
-                "branch"
-              ],
-              "additionalProperties": false
-            }
-          }
-        }
-      }
-    ],
-    "onEventScripts": {
-      "post-connection-creation": [],
-      "pre-connection-deletion": [
-        "pre-connection-deletion"
-      ],
-      "validate-connection": []
-    }
-  },
-  {
     "providerConfigKey": "salesforce",
     "actions": [],
     "syncs": [
@@ -559,7 +302,8 @@
               "type": "null"
             }
           }
-        }
+        },
+        "features": []
       },
       {
         "type": "sync",
@@ -668,7 +412,8 @@
               "type": "null"
             }
           }
-        }
+        },
+        "features": []
       },
       {
         "type": "sync",
@@ -895,7 +640,8 @@
               "type": "null"
             }
           }
-        }
+        },
+        "features": []
       },
       {
         "type": "sync",
@@ -1099,7 +845,802 @@
               "type": "null"
             }
           }
-        }
+        },
+        "features": []
+      },
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce Contact records with Account and Owner relationships. Contact.Email is the universal join key for activity attribution.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/contacts",
+            "group": "Contacts"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchcontacts",
+        "name": "fetch-contacts",
+        "output": [
+          "Contact"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "Contact",
+          "SyncMetadata_salesforce_fetchcontacts"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "Contact": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "FirstName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "LastName": {
+                  "type": "string"
+                },
+                "Email": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Phone": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "MobilePhone": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Department": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "AccountId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "OwnerId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "MailingCity": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "MailingState": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "MailingCountry": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "LeadSource": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "LastModifiedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "Account": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "Industry": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Name",
+                        "Industry"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Owner": {
+                  "type": "object",
+                  "properties": {
+                    "Name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "Email": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "Name",
+                    "Email"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "FirstName",
+                "LastName",
+                "Email",
+                "Phone",
+                "MobilePhone",
+                "Title",
+                "Department",
+                "AccountId",
+                "OwnerId",
+                "MailingCity",
+                "MailingState",
+                "MailingCountry",
+                "LeadSource",
+                "CreatedDate",
+                "LastModifiedDate",
+                "Account",
+                "Owner"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchcontacts": {
+              "type": "null"
+            }
+          }
+        },
+        "features": []
+      },
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce Account records with Owner and Parent relationships.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/accounts",
+            "group": "Accounts"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchaccounts",
+        "name": "fetch-accounts",
+        "output": [
+          "Account"
+        ],
+        "runs": "every hour",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "Account",
+          "SyncMetadata_salesforce_fetchaccounts"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "Account": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Name": {
+                  "type": "string"
+                },
+                "Type": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Industry": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Description": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Website": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Phone": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "AnnualRevenue": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "NumberOfEmployees": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "OwnerId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "ParentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "BillingCity": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "BillingState": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "BillingCountry": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Rating": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "LastModifiedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "Owner": {
+                  "type": "object",
+                  "properties": {
+                    "Name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "Email": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "Name",
+                    "Email"
+                  ],
+                  "additionalProperties": false
+                },
+                "Parent": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "Name",
+                "Type",
+                "Industry",
+                "Description",
+                "Website",
+                "Phone",
+                "AnnualRevenue",
+                "NumberOfEmployees",
+                "OwnerId",
+                "ParentId",
+                "BillingCity",
+                "BillingState",
+                "BillingCountry",
+                "Rating",
+                "CreatedDate",
+                "LastModifiedDate",
+                "Owner",
+                "Parent"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchaccounts": {
+              "type": "null"
+            }
+          }
+        },
+        "features": []
+      },
+      {
+        "type": "sync",
+        "description": "Fetches Salesforce User records with Manager and Profile relationships. User.Email is the join key for rep identity across tools.",
+        "auto_start": true,
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/salesforce/users",
+            "group": "Users"
+          }
+        ],
+        "input": "SyncMetadata_salesforce_fetchusers",
+        "name": "fetch-users",
+        "output": [
+          "User"
+        ],
+        "runs": "every day",
+        "scopes": [],
+        "sync_type": "incremental",
+        "track_deletes": false,
+        "usedModels": [
+          "User",
+          "SyncMetadata_salesforce_fetchusers"
+        ],
+        "version": "1.0.0",
+        "webhookSubscriptions": [],
+        "json_schema": {
+          "definitions": {
+            "User": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Id": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "Name": {
+                  "type": "string"
+                },
+                "FirstName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "LastName": {
+                  "type": "string"
+                },
+                "Email": {
+                  "type": "string"
+                },
+                "Username": {
+                  "type": "string"
+                },
+                "Alias": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Department": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Division": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CompanyName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "IsActive": {
+                  "type": "boolean"
+                },
+                "ManagerId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ProfileId": {
+                  "type": "string",
+                  "minLength": 18,
+                  "maxLength": 18
+                },
+                "UserRoleId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 18,
+                      "maxLength": 18
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "CreatedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "LastModifiedDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                },
+                "LastLoginDate": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{4})$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Manager": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "Email": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Name",
+                        "Email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "Profile": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "Name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "Id",
+                "Name",
+                "FirstName",
+                "LastName",
+                "Email",
+                "Username",
+                "Alias",
+                "Title",
+                "Department",
+                "Division",
+                "CompanyName",
+                "IsActive",
+                "ManagerId",
+                "ProfileId",
+                "UserRoleId",
+                "CreatedDate",
+                "LastModifiedDate",
+                "LastLoginDate",
+                "Manager",
+                "Profile"
+              ],
+              "additionalProperties": false
+            },
+            "SyncMetadata_salesforce_fetchusers": {
+              "type": "null"
+            }
+          }
+        },
+        "features": []
       }
     ],
     "onEventScripts": {

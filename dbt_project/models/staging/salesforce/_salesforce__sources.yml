@@ -68,3 +68,48 @@ sources:
           meta:
             dagster:
               asset_key: ["salesforce_raw", "salesforce_tasks"]
+      - name: salesforce_contacts
+        description: Raw Contact records with JSONB data column. Contact.Email is the universal join key for attribution.
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_raw", "salesforce_contacts"]
+      - name: salesforce_accounts
+        description: Raw Account records with JSONB data column
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_raw", "salesforce_accounts"]
+      - name: salesforce_users
+        description: Raw User records with JSONB data column. User.Email is the join key for rep identity.
+        columns:
+          - name: salesforce_id
+            description: Salesforce record ID
+          - name: connection_id
+            description: Nango connection identifier
+          - name: data
+            description: Full Salesforce record as JSONB
+          - name: synced_at
+            description: Timestamp when record was synced
+        config:
+          meta:
+            dagster:
+              asset_key: ["salesforce_raw", "salesforce_users"]

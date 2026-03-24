@@ -4,19 +4,29 @@
     )
 }}
 
--- Extract unique accounts from opportunities
-with opportunity_accounts as (
-    select distinct
-        account_id,
-        account_name,
-        account_industry
-    from {{ ref('stg_salesforce__opportunities') }}
-    where account_id is not null
+-- Account dimension from the dedicated accounts staging model
+with accounts as (
+    select * from {{ ref('stg_salesforce__accounts') }}
 )
 
 select
-    account_id,
+    salesforce_id as account_id,
     account_name,
-    account_industry,
+    account_type,
+    industry,
+    website,
+    phone,
+    annual_revenue,
+    number_of_employees,
+    rating,
+    billing_city,
+    billing_state,
+    billing_country,
+    parent_account_id,
+    parent_account_name,
+    owner_id,
+    owner_name,
+    created_at,
+    updated_at,
     current_timestamp as refreshed_at
-from opportunity_accounts
+from accounts

@@ -1,10 +1,12 @@
 """Streamlit dashboard for data-hub Sales Intelligence.
 
-Displays insights from dbt marts:
-- Pipeline health and forecasting
-- Sales velocity and bottlenecks
-- Rep performance and coaching insights
-- Activity coverage analysis
+Sections:
+1. Data Health - Audit log style metrics (record counts, sync status, coverage)
+2. Revenue Overview - Key pipeline and revenue metrics
+3. Deal Velocity - Where deals get stuck (per spec Section 2.5)
+4. Rep Performance - Attribution and coaching insights
+5. Activity Attribution - Activity to revenue correlation (per spec Section 4)
+6. Contact Coverage - Data quality for attribution (per spec conditional)
 """
 
 from __future__ import annotations
@@ -15,11 +17,12 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import Engine, create_engine
 
-# Page config
+# Page config - wide layout for dashboards
 st.set_page_config(
-    page_title="Sales Intelligence Dashboard",
+    page_title="Staq Sales Intelligence",
     page_icon="📊",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
 
@@ -54,415 +57,524 @@ def table_exists(table: str, schema: str = "public") -> bool:
     return bool(result["exists"].iloc[0]) if not result.empty else False
 
 
+def format_number(val: float | None, prefix: str = "", suffix: str = "") -> str:
+    """Format number with optional prefix/suffix."""
+    if pd.isna(val) or val is None:
+        return "N/A"
+    return f"{prefix}{val:,.0f}{suffix}"
+
+
+def format_currency(val: float | None) -> str:
+    """Format as currency."""
+    return format_number(val, prefix="$")
+
+
+def format_pct(val: float | None) -> str:
+    """Format as percentage."""
+    if pd.isna(val) or val is None:
+        return "N/A"
+    return f"{val:.1f}%"
+
+
 # =========================================================================
 # HEADER
 # =========================================================================
 
-st.title("📊 Sales Intelligence Dashboard")
+st.title("Staq Sales Intelligence")
 
-# Check if marts exist (dbt creates schemas as public_marts, public_staging, etc.)
+# Check if data exists
 marts_exist = table_exists("fct_opportunities", "public_marts")
-staging_exist = table_exists("stg_salesforce__opportunities", "public_staging")
+raw_exist = table_exists("salesforce_opportunities", "public_raw")
+
+if not raw_exist:
+    st.error(
+        "**No raw data found.** Run Dagster materializations to ingest Salesforce data.\n\n"
+        "```bash\nsource .env && dagster dev\n```"
+    )
+    st.stop()
 
 if not marts_exist:
     st.warning(
         "**dbt marts not found.** Run `dbt run` to build the analytics tables.\n\n"
         "```bash\ncd dbt_project && dbt run --profiles-dir .\n```"
     )
-    if staging_exist:
-        st.info("Staging tables exist. Only marts need to be built.")
     st.stop()
 
-
-# =========================================================================
-# OVERVIEW SECTION
-# =========================================================================
-
-st.header("🏠 Overview")
-
-# Load key metrics from marts
-overview_metrics = query_df("""
-    SELECT
-        count(*) as total_opportunities,
-        count(*) filter (where opportunity_status = 'Open') as open_opportunities,
-        count(*) filter (where opportunity_status = 'Won') as won_opportunities,
-        count(*) filter (where opportunity_status = 'Lost') as lost_opportunities,
-        sum(amount) filter (where opportunity_status = 'Open') as open_pipeline,
-        sum(amount) filter (where opportunity_status = 'Won') as won_revenue,
-        avg(amount) as avg_deal_size,
-        avg(days_to_close) filter (where opportunity_status != 'Open') as avg_days_to_close
-    FROM public_marts.fct_opportunities
-""")
-
-activity_metrics = query_df("""
-    SELECT
-        count(*) as total_activities,
-        count(*) filter (where activity_type = 'event') as total_events,
-        count(*) filter (where activity_type = 'task') as total_tasks,
-        count(*) filter (where is_completed) as completed_tasks
-    FROM public_marts.fct_activities
-""")
-
-if not overview_metrics.empty:
-    m = overview_metrics.iloc[0]
-
-    # Row 1: Pipeline metrics
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        pipeline = m["open_pipeline"] or 0
-        st.metric("Open Pipeline", f"${pipeline:,.0f}")
-
-    with col2:
-        won = m["won_revenue"] or 0
-        st.metric("Won Revenue", f"${won:,.0f}")
-
-    with col3:
-        avg_size = m["avg_deal_size"] or 0
-        st.metric("Avg Deal Size", f"${avg_size:,.0f}")
-
-    with col4:
-        won_count = m["won_opportunities"] or 0
-        lost_count = m["lost_opportunities"] or 0
-        total_closed = won_count + lost_count
-        win_rate = (won_count / total_closed * 100) if total_closed > 0 else 0
-        st.metric("Win Rate", f"{win_rate:.1f}%")
-
-    # Row 2: Counts
-    col5, col6, col7, col8 = st.columns(4)
-
-    with col5:
-        st.metric("Open Opportunities", f"{m['open_opportunities'] or 0:,}")
-
-    with col6:
-        st.metric("Won Deals", f"{m['won_opportunities'] or 0:,}")
-
-    with col7:
-        if not activity_metrics.empty:
-            a = activity_metrics.iloc[0]
-            st.metric("Total Activities", f"{a['total_activities'] or 0:,}")
-
-    with col8:
-        avg_days = m["avg_days_to_close"]
-        st.metric("Avg Days to Close", f"{avg_days:.0f}" if pd.notna(avg_days) else "N/A")
-
-# Last refresh
+# Last refresh timestamp
 refresh_df = query_df("SELECT max(refreshed_at) as last_refresh FROM public_marts.fct_opportunities")
 if not refresh_df.empty and refresh_df["last_refresh"].iloc[0]:
-    st.caption(f"Data refreshed: {refresh_df['last_refresh'].iloc[0]}")
+    st.caption(f"Last refreshed: {refresh_df['last_refresh'].iloc[0]}")
 
 st.divider()
 
-
 # =========================================================================
-# PIPELINE SNAPSHOT
+# TABS FOR ORGANIZED CONTENT
 # =========================================================================
 
-st.header("📈 Pipeline Snapshot")
-
-pipeline_df = query_df("""
-    SELECT * FROM public_reports.rpt_pipeline_snapshot
-    ORDER BY report_section, dimension
-""")
-
-if not pipeline_df.empty:
-    # Split by section
-    by_stage = pipeline_df[pipeline_df["report_section"] == "by_stage"]
-    by_time = pipeline_df[pipeline_df["report_section"] == "by_close_date"]
-    totals = pipeline_df[pipeline_df["report_section"] == "total"]
-
-    col_left, col_right = st.columns(2)
-
-    with col_left:
-        st.subheader("By Stage")
-        if not by_stage.empty:
-            chart_data = by_stage[["dimension", "total_amount"]].copy()
-            chart_data.columns = ["Stage", "Amount"]
-            st.bar_chart(chart_data.set_index("Stage"))
-
-            st.dataframe(
-                by_stage[["dimension", "opportunity_count", "total_amount", "weighted_amount"]].rename(
-                    columns={
-                        "dimension": "Stage",
-                        "opportunity_count": "Count",
-                        "total_amount": "Total",
-                        "weighted_amount": "Weighted",
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-    with col_right:
-        st.subheader("By Close Date")
-        if not by_time.empty:
-            # Order time buckets properly
-            time_order = ["Overdue", "This Week", "This Month", "This Quarter", "Future"]
-            by_time["sort_order"] = by_time["dimension"].map(
-                {v: i for i, v in enumerate(time_order)}
-            )
-            by_time = by_time.sort_values("sort_order")
-
-            chart_data = by_time[["dimension", "total_amount"]].copy()
-            chart_data.columns = ["Time Horizon", "Amount"]
-            st.bar_chart(chart_data.set_index("Time Horizon"))
-
-            st.dataframe(
-                by_time[["dimension", "opportunity_count", "total_amount", "weighted_amount"]].rename(
-                    columns={
-                        "dimension": "Time Horizon",
-                        "opportunity_count": "Count",
-                        "total_amount": "Total",
-                        "weighted_amount": "Weighted",
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True,
-            )
-else:
-    st.info("No pipeline data available.")
-
-st.divider()
+tab_overview, tab_velocity, tab_reps, tab_activity, tab_health = st.tabs([
+    "Revenue Overview",
+    "Deal Velocity",
+    "Rep Performance",
+    "Activity Attribution",
+    "Data Health"
+])
 
 
 # =========================================================================
-# SALES VELOCITY
+# TAB 1: REVENUE OVERVIEW
 # =========================================================================
 
-st.header("⏱️ Sales Velocity")
-st.caption("Where do deals get stuck?")
+with tab_overview:
+    overview_metrics = query_df("""
+        SELECT
+            count(*) as total_opportunities,
+            count(*) filter (where opportunity_status = 'Open') as open_opportunities,
+            count(*) filter (where opportunity_status = 'Won') as won_opportunities,
+            count(*) filter (where opportunity_status = 'Lost') as lost_opportunities,
+            sum(amount) filter (where opportunity_status = 'Open') as open_pipeline,
+            sum(amount) filter (where opportunity_status = 'Won') as won_revenue,
+            sum(amount) filter (where opportunity_status = 'Lost') as lost_revenue,
+            avg(amount) filter (where opportunity_status = 'Won') as avg_won_deal_size,
+            avg(days_to_close) filter (where opportunity_status = 'Won') as avg_days_to_close_won
+        FROM public_marts.fct_opportunities
+    """)
 
-velocity_df = query_df("""
-    SELECT * FROM public_reports.rpt_sales_velocity
-    ORDER BY avg_days_in_stage DESC
-""")
+    if not overview_metrics.empty:
+        m = overview_metrics.iloc[0]
 
-if not velocity_df.empty:
-    col_left, col_right = st.columns([2, 1])
+        # Calculate win rate
+        won = m["won_opportunities"] or 0
+        lost = m["lost_opportunities"] or 0
+        total_closed = won + lost
+        win_rate = (won / total_closed * 100) if total_closed > 0 else 0
 
-    with col_left:
-        # Bar chart of avg days per stage
-        chart_data = velocity_df[["stage_name", "avg_days_in_stage"]].copy()
-        chart_data.columns = ["Stage", "Avg Days"]
-        st.bar_chart(chart_data.set_index("Stage"))
+        # KPI Cards Row 1
+        st.subheader("Key Metrics")
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4, gap="medium")
 
-    with col_right:
-        # Bottleneck callout
+        with kpi1:
+            with st.container(border=True):
+                st.metric("Open Pipeline", format_currency(m["open_pipeline"]))
+                st.caption(f"{int(m['open_opportunities'] or 0)} open deals")
+
+        with kpi2:
+            with st.container(border=True):
+                st.metric("Won Revenue", format_currency(m["won_revenue"]))
+                st.caption(f"{int(m['won_opportunities'] or 0)} won deals")
+
+        with kpi3:
+            with st.container(border=True):
+                st.metric("Win Rate", format_pct(win_rate))
+                st.caption(f"{int(total_closed)} closed deals")
+
+        with kpi4:
+            with st.container(border=True):
+                days = m["avg_days_to_close_won"]
+                st.metric("Avg Days to Close", f"{days:.0f}" if pd.notna(days) else "N/A")
+                st.caption("Won deals only")
+
+        st.divider()
+
+        # Pipeline by Stage
+        st.subheader("Pipeline by Stage")
+
+        pipeline_by_stage = query_df("""
+            SELECT
+                stage_name,
+                count(*) as deal_count,
+                sum(amount) as total_amount,
+                sum(amount * probability / 100) as weighted_amount,
+                avg(days_open) as avg_days_in_stage
+            FROM public_marts.fct_opportunities
+            WHERE opportunity_status = 'Open'
+            GROUP BY stage_name
+            ORDER BY total_amount DESC NULLS LAST
+        """)
+
+        if not pipeline_by_stage.empty:
+            col_chart, col_table = st.columns([3, 2], gap="large")
+
+            with col_chart:
+                with st.container(border=True):
+                    chart_data = pipeline_by_stage[["stage_name", "total_amount"]].copy()
+                    chart_data.columns = ["Stage", "Amount"]
+                    chart_data = chart_data.set_index("Stage")
+                    st.bar_chart(chart_data, use_container_width=True)
+
+            with col_table:
+                with st.container(border=True):
+                    display_df = pipeline_by_stage.copy()
+                    display_df["total_amount"] = display_df["total_amount"].apply(format_currency)
+                    display_df["weighted_amount"] = display_df["weighted_amount"].apply(format_currency)
+                    display_df["avg_days_in_stage"] = display_df["avg_days_in_stage"].apply(
+                        lambda x: f"{x:.0f}" if pd.notna(x) else "N/A"
+                    )
+                    display_df.columns = ["Stage", "Deals", "Total", "Weighted", "Avg Days"]
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        # Top Opportunities
+        st.subheader("Top Open Opportunities")
+
+        top_opps = query_df("""
+            SELECT
+                o.opportunity_name,
+                o.amount,
+                o.stage_name,
+                o.probability,
+                o.close_date,
+                o.days_until_close,
+                o.total_activities,
+                ow.owner_name
+            FROM public_marts.fct_opportunities o
+            LEFT JOIN public_marts.dim_owners ow ON o.owner_id = ow.owner_id
+            WHERE o.opportunity_status = 'Open'
+            ORDER BY o.amount DESC NULLS LAST
+            LIMIT 10
+        """)
+
+        if not top_opps.empty:
+            with st.container(border=True):
+                display_df = top_opps.copy()
+                display_df["amount"] = display_df["amount"].apply(format_currency)
+                display_df["probability"] = display_df["probability"].apply(
+                    lambda x: f"{x:.0f}%" if pd.notna(x) else "N/A"
+                )
+                display_df["days_until_close"] = display_df["days_until_close"].apply(
+                    lambda x: f"{x:.0f}" if pd.notna(x) else "N/A"
+                )
+                display_df.columns = [
+                    "Opportunity", "Amount", "Stage", "Prob", "Close Date",
+                    "Days Left", "Activities", "Owner"
+                ]
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+
+# =========================================================================
+# TAB 2: DEAL VELOCITY
+# =========================================================================
+
+with tab_velocity:
+    st.subheader("Stage Velocity Analysis")
+    st.caption("Where do deals get stuck? Time spent in each pipeline stage.")
+
+    velocity_df = query_df("""
+        SELECT * FROM public_reports.rpt_sales_velocity
+        ORDER BY avg_days_in_stage DESC
+    """)
+
+    if not velocity_df.empty:
+        # Bottleneck Alert
         bottlenecks = velocity_df[velocity_df["is_bottleneck"] == True]  # noqa: E712
         if not bottlenecks.empty:
-            st.error("**Bottleneck Stages**")
-            for _, row in bottlenecks.iterrows():
-                st.write(f"- **{row['stage_name']}**: {row['avg_days_in_stage']:.1f} days avg")
-        else:
-            st.success("No bottleneck stages detected")
+            with st.container(border=True):
+                st.error("**Bottleneck Stages Detected**")
+                bcols = st.columns(len(bottlenecks))
+                for i, (_, row) in enumerate(bottlenecks.iterrows()):
+                    with bcols[i]:
+                        st.metric(row["stage_name"], f"{row['avg_days_in_stage']:.1f} days")
+                st.caption("These stages take significantly longer than average. Focus coaching here.")
 
-    # Full table
-    st.dataframe(
-        velocity_df[
-            ["stage_name", "transitions_count", "avg_days_in_stage", "median_days_in_stage", "is_bottleneck"]
-        ].rename(
-            columns={
-                "stage_name": "Stage",
-                "transitions_count": "Transitions",
-                "avg_days_in_stage": "Avg Days",
-                "median_days_in_stage": "Median Days",
-                "is_bottleneck": "Bottleneck?",
-            }
-        ),
-        use_container_width=True,
-        hide_index=True,
-    )
-else:
-    st.info("No velocity data available. Need opportunity history records.")
+        st.divider()
 
-st.divider()
+        # Chart and Table
+        col_chart, col_table = st.columns([3, 2], gap="large")
+
+        with col_chart:
+            with st.container(border=True):
+                st.write("**Average Days in Stage**")
+                chart_data = velocity_df[["stage_name", "avg_days_in_stage"]].copy()
+                chart_data.columns = ["Stage", "Avg Days"]
+                st.bar_chart(chart_data.set_index("Stage"), use_container_width=True)
+
+        with col_table:
+            with st.container(border=True):
+                st.write("**Detailed Metrics**")
+                display_df = velocity_df[
+                    ["stage_name", "transitions_count", "avg_days_in_stage", "median_days_in_stage", "is_bottleneck"]
+                ].copy()
+                display_df.columns = ["Stage", "Transitions", "Avg Days", "Median", "Bottleneck"]
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No velocity data available. Need opportunity history records.")
 
 
 # =========================================================================
-# REP PERFORMANCE
+# TAB 3: REP PERFORMANCE
 # =========================================================================
 
-st.header("👥 Rep Performance")
-st.caption("Who are top performers? Who needs coaching?")
+with tab_reps:
+    st.subheader("Sales Rep Performance")
 
-rep_df = query_df("""
-    SELECT * FROM public_reports.rpt_win_rate_by_owner
-    ORDER BY won_revenue DESC NULLS LAST
-""")
+    rep_df = query_df("""
+        SELECT
+            r.*,
+            o.email as owner_email
+        FROM public_reports.rpt_win_rate_by_owner r
+        LEFT JOIN public_marts.dim_owners o ON r.owner_id = o.owner_id
+        ORDER BY won_revenue DESC NULLS LAST
+    """)
 
-if not rep_df.empty:
-    # Performance tier summary
-    tier_counts = rep_df["performance_tier"].value_counts()
+    if not rep_df.empty:
+        # Performance Tier Summary
+        tier_counts = rep_df["performance_tier"].value_counts()
 
-    col1, col2, col3, col4 = st.columns(4)
+        tier1, tier2, tier3, tier4 = st.columns(4, gap="medium")
 
-    with col1:
-        high = tier_counts.get("High Performer", 0)
-        st.metric("High Performers", high, help="Win rate >= 40%")
+        with tier1:
+            with st.container(border=True):
+                count = tier_counts.get("High Performer", 0)
+                st.metric("High Performers", count)
+                st.caption("Win rate >= 40%")
 
-    with col2:
-        avg = tier_counts.get("Average", 0)
-        st.metric("Average", avg, help="Win rate 25-39%")
+        with tier2:
+            with st.container(border=True):
+                count = tier_counts.get("Average", 0)
+                st.metric("Average", count)
+                st.caption("Win rate 25-39%")
 
-    with col3:
-        needs = tier_counts.get("Needs Coaching", 0)
-        st.metric("Needs Coaching", needs, help="Win rate < 25%")
+        with tier3:
+            with st.container(border=True):
+                count = tier_counts.get("Needs Coaching", 0)
+                st.metric("Needs Coaching", count)
+                st.caption("Win rate < 25%")
 
-    with col4:
-        no_closed = tier_counts.get("No Closed Deals", 0)
-        st.metric("No Closed Deals", no_closed)
+        with tier4:
+            with st.container(border=True):
+                count = tier_counts.get("No Closed Deals", 0)
+                st.metric("No Closed Deals", count)
+                st.caption("New or inactive")
+
+        st.divider()
+
+        # Leaderboard
+        st.subheader("Leaderboard")
+
+        with st.container(border=True):
+            display_df = rep_df[
+                ["owner_name", "total_opportunities", "won_opportunities", "win_rate_pct",
+                 "won_revenue", "avg_won_deal_size", "avg_days_to_close", "performance_tier"]
+            ].copy()
+
+            display_df["won_revenue"] = display_df["won_revenue"].apply(format_currency)
+            display_df["avg_won_deal_size"] = display_df["avg_won_deal_size"].apply(format_currency)
+            display_df["avg_days_to_close"] = display_df["avg_days_to_close"].apply(
+                lambda x: f"{x:.0f}" if pd.notna(x) else "N/A"
+            )
+            display_df["win_rate_pct"] = display_df["win_rate_pct"].apply(format_pct)
+
+            display_df.columns = ["Rep", "Total", "Won", "Win Rate", "Revenue", "Avg Deal", "Avg Days", "Tier"]
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No rep performance data available.")
+
+
+# =========================================================================
+# TAB 4: ACTIVITY ATTRIBUTION
+# =========================================================================
+
+with tab_activity:
+    st.subheader("Activity to Revenue Correlation")
+    st.caption("Do more activities correlate with higher win rates?")
+
+    coverage_df = query_df("""
+        SELECT * FROM public_reports.rpt_activity_coverage
+    """)
+
+    if not coverage_df.empty:
+        # Insight callout first
+        high_activity = coverage_df[coverage_df["activity_bucket"] == "11+ High"]
+        low_activity = coverage_df[coverage_df["activity_bucket"] == "0 - No activities"]
+
+        if not high_activity.empty and not low_activity.empty:
+            high_win = high_activity["win_rate_pct"].iloc[0] or 0
+            low_win = low_activity["win_rate_pct"].iloc[0] or 0
+
+            if high_win > low_win:
+                diff = high_win - low_win
+                with st.container(border=True):
+                    st.success(
+                        f"**Key Insight:** High-activity deals have a **{diff:.1f}pp higher win rate** "
+                        f"({high_win:.1f}% vs {low_win:.1f}%). Activity drives outcomes."
+                    )
+            elif low_win > high_win:
+                with st.container(border=True):
+                    st.warning(
+                        "**Unexpected Pattern:** Low-activity deals show higher win rate. "
+                        "Check if activities are being logged properly."
+                    )
+
+        st.divider()
+
+        # Charts side by side
+        col_left, col_right = st.columns(2, gap="large")
+
+        with col_left:
+            with st.container(border=True):
+                st.write("**Win Rate by Activity Level**")
+                chart_data = coverage_df[["activity_bucket", "win_rate_pct"]].copy()
+                chart_data.columns = ["Activity Level", "Win Rate %"]
+                st.bar_chart(chart_data.set_index("Activity Level"), use_container_width=True)
+
+        with col_right:
+            with st.container(border=True):
+                st.write("**Won Revenue by Activity Level**")
+                chart_data = coverage_df[["activity_bucket", "won_revenue"]].copy()
+                chart_data.columns = ["Activity Level", "Won Revenue"]
+                st.bar_chart(chart_data.set_index("Activity Level"), use_container_width=True)
+
+        st.divider()
+
+        # Detailed table
+        with st.expander("View Detailed Breakdown"):
+            display_df = coverage_df[
+                ["activity_bucket", "opportunity_count", "won_count", "win_rate_pct", "won_revenue"]
+            ].copy()
+            display_df["won_revenue"] = display_df["won_revenue"].apply(format_currency)
+            display_df["win_rate_pct"] = display_df["win_rate_pct"].apply(format_pct)
+            display_df.columns = ["Activity Level", "Opportunities", "Won", "Win Rate", "Won Revenue"]
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No activity coverage data available.")
+
+
+# =========================================================================
+# TAB 5: DATA HEALTH
+# =========================================================================
+
+with tab_health:
+    st.subheader("Data Health & Sync Status")
+    st.caption("Record counts, sync timestamps, and data quality metrics")
+
+    # Raw table counts
+    raw_counts = query_df("""
+        SELECT
+            'Opportunities' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_opportunities) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_opportunities) as last_sync
+        UNION ALL
+        SELECT
+            'Contacts' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_contacts) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_contacts) as last_sync
+        UNION ALL
+        SELECT
+            'Accounts' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_accounts) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_accounts) as last_sync
+        UNION ALL
+        SELECT
+            'Users' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_users) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_users) as last_sync
+        UNION ALL
+        SELECT
+            'Events' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_events) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_events) as last_sync
+        UNION ALL
+        SELECT
+            'Tasks' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_tasks) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_tasks) as last_sync
+        UNION ALL
+        SELECT
+            'Opportunity History' as entity,
+            (SELECT count(*) FROM public_raw.salesforce_opportunity_history) as raw_count,
+            (SELECT max(synced_at) FROM public_raw.salesforce_opportunity_history) as last_sync
+    """)
+
+    # Record counts in cards
+    st.write("**Raw Record Counts**")
+    if not raw_counts.empty:
+        cols = st.columns(4, gap="medium")
+        for i, (_, row) in enumerate(raw_counts.iterrows()):
+            with cols[i % 4]:
+                with st.container(border=True):
+                    sync_time = row["last_sync"]
+                    sync_str = sync_time.strftime("%m/%d %H:%M") if pd.notna(sync_time) else "Never"
+                    st.metric(row["entity"], format_number(row["raw_count"]))
+                    st.caption(f"Synced: {sync_str}")
 
     st.divider()
 
-    # Full leaderboard
-    st.subheader("Leaderboard")
+    # Data quality metrics
+    st.write("**Data Quality Metrics**")
 
-    display_df = rep_df[
-        [
-            "owner_name",
-            "total_opportunities",
-            "won_opportunities",
-            "win_rate_pct",
-            "won_revenue",
-            "avg_won_deal_size",
-            "avg_days_to_close",
-            "performance_tier",
-        ]
-    ].copy()
+    quality_metrics = query_df("""
+        SELECT
+            -- Contacts with email (required for attribution)
+            (SELECT count(*) FROM public_staging.stg_salesforce__contacts WHERE email IS NOT NULL) as contacts_with_email,
+            (SELECT count(*) FROM public_staging.stg_salesforce__contacts) as total_contacts,
 
-    display_df.columns = [
-        "Rep",
-        "Total Opps",
-        "Won",
-        "Win Rate %",
-        "Won Revenue",
-        "Avg Deal Size",
-        "Avg Days to Close",
-        "Tier",
-    ]
+            -- Activities linked to opportunities
+            (SELECT count(*) FROM public_staging.stg_salesforce__events WHERE what_id IS NOT NULL) as events_linked,
+            (SELECT count(*) FROM public_staging.stg_salesforce__events) as total_events,
+            (SELECT count(*) FROM public_staging.stg_salesforce__tasks WHERE what_id IS NOT NULL) as tasks_linked,
+            (SELECT count(*) FROM public_staging.stg_salesforce__tasks) as total_tasks,
 
-    # Format currency columns
-    display_df["Won Revenue"] = display_df["Won Revenue"].apply(
-        lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A"
-    )
-    display_df["Avg Deal Size"] = display_df["Avg Deal Size"].apply(
-        lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A"
-    )
+            -- Active users
+            (SELECT count(*) FROM public_staging.stg_salesforce__users WHERE is_active = true) as active_users,
+            (SELECT count(*) FROM public_staging.stg_salesforce__users) as total_users
+    """)
 
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-else:
-    st.info("No rep performance data available.")
+    if not quality_metrics.empty:
+        q = quality_metrics.iloc[0]
 
-st.divider()
+        contact_coverage = (q["contacts_with_email"] / q["total_contacts"] * 100) if q["total_contacts"] > 0 else 0
+        event_link_rate = (q["events_linked"] / q["total_events"] * 100) if q["total_events"] > 0 else 0
+        task_link_rate = (q["tasks_linked"] / q["total_tasks"] * 100) if q["total_tasks"] > 0 else 0
 
+        qcol1, qcol2, qcol3, qcol4 = st.columns(4, gap="medium")
 
-# =========================================================================
-# ACTIVITY COVERAGE
-# =========================================================================
+        with qcol1:
+            with st.container(border=True):
+                st.metric("Contacts with Email", format_pct(contact_coverage))
+                if contact_coverage < 80:
+                    st.warning("Low coverage limits attribution")
+                else:
+                    st.success("Good coverage")
 
-st.header("📞 Activity Coverage")
-st.caption("Do more activities correlate with higher win rates?")
+        with qcol2:
+            with st.container(border=True):
+                st.metric("Events Linked to Opps", format_pct(event_link_rate))
+                st.caption(f"{int(q['events_linked'])} / {int(q['total_events'])}")
 
-coverage_df = query_df("""
-    SELECT * FROM public_reports.rpt_activity_coverage
-""")
+        with qcol3:
+            with st.container(border=True):
+                st.metric("Tasks Linked to Opps", format_pct(task_link_rate))
+                st.caption(f"{int(q['tasks_linked'])} / {int(q['total_tasks'])}")
 
-if not coverage_df.empty:
-    col_left, col_right = st.columns(2)
+        with qcol4:
+            with st.container(border=True):
+                st.metric("Active Users", f"{int(q['active_users'])} / {int(q['total_users'])}")
+                st.caption("IsActive = true")
 
-    with col_left:
-        st.subheader("Win Rate by Activity Level")
-        chart_data = coverage_df[["activity_bucket", "win_rate_pct"]].copy()
-        chart_data.columns = ["Activity Level", "Win Rate %"]
-        st.bar_chart(chart_data.set_index("Activity Level"))
+    st.divider()
 
-    with col_right:
-        st.subheader("Revenue by Activity Level")
-        chart_data = coverage_df[["activity_bucket", "won_revenue"]].copy()
-        chart_data.columns = ["Activity Level", "Won Revenue"]
-        st.bar_chart(chart_data.set_index("Activity Level"))
+    # Contact coverage detail
+    with st.expander("Contact Coverage by Account"):
+        contacts_by_account = query_df("""
+            SELECT
+                account_name,
+                count(*) as contact_count,
+                count(*) filter (where email is not null) as contacts_with_email
+            FROM public_marts.dim_contacts
+            WHERE account_name IS NOT NULL
+            GROUP BY account_name
+            ORDER BY contact_count DESC
+            LIMIT 15
+        """)
 
-    # Insight callout
-    high_activity = coverage_df[coverage_df["activity_bucket"] == "11+ High"]
-    low_activity = coverage_df[coverage_df["activity_bucket"] == "0 - No activities"]
-
-    if not high_activity.empty and not low_activity.empty:
-        high_win = high_activity["win_rate_pct"].iloc[0] or 0
-        low_win = low_activity["win_rate_pct"].iloc[0] or 0
-
-        if high_win > low_win:
-            diff = high_win - low_win
-            st.success(
-                f"**Insight:** High-activity opportunities have a {diff:.1f}pp higher win rate "
-                f"({high_win:.1f}% vs {low_win:.1f}%)"
-            )
-
-    # Full table
-    st.dataframe(
-        coverage_df[
-            ["activity_bucket", "opportunity_count", "won_count", "win_rate_pct", "won_revenue"]
-        ].rename(
-            columns={
-                "activity_bucket": "Activity Level",
-                "opportunity_count": "Opportunities",
-                "won_count": "Won",
-                "win_rate_pct": "Win Rate %",
-                "won_revenue": "Won Revenue",
-            }
-        ),
-        use_container_width=True,
-        hide_index=True,
-    )
-else:
-    st.info("No activity coverage data available.")
-
-st.divider()
-
-
-# =========================================================================
-# TOP OPPORTUNITIES
-# =========================================================================
-
-st.header("🎯 Top Open Opportunities")
-
-top_opps = query_df("""
-    SELECT
-        opportunity_name,
-        amount,
-        stage_name,
-        probability,
-        close_date,
-        days_until_close,
-        total_activities,
-        owner_id
-    FROM public_marts.fct_opportunities
-    WHERE opportunity_status = 'Open'
-    ORDER BY amount DESC NULLS LAST
-    LIMIT 15
-""")
-
-if not top_opps.empty:
-    display_df = top_opps.copy()
-    display_df["amount"] = display_df["amount"].apply(
-        lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A"
-    )
-    display_df["probability"] = display_df["probability"].apply(
-        lambda x: f"{x:.0f}%" if pd.notna(x) else "N/A"
-    )
-    display_df.columns = [
-        "Opportunity",
-        "Amount",
-        "Stage",
-        "Probability",
-        "Close Date",
-        "Days Until Close",
-        "Activities",
-        "Owner ID",
-    ]
-
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-else:
-    st.info("No open opportunities found.")
+        if not contacts_by_account.empty:
+            display_df = contacts_by_account.copy()
+            display_df["email_rate"] = (
+                display_df["contacts_with_email"] / display_df["contact_count"] * 100
+            ).round(1)
+            display_df["email_rate"] = display_df["email_rate"].apply(lambda x: f"{x:.1f}%")
+            display_df.columns = ["Account", "Total Contacts", "With Email", "Email Rate"]
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 
 # =========================================================================
@@ -471,7 +583,6 @@ else:
 
 st.divider()
 st.caption(
-    "Data powered by Dagster + dbt | "
-    "Raw: `salesforce_*` → Staging: `stg_salesforce__*` → "
-    "Facts: `fct_*` → Reports: `rpt_*`"
+    "**Data Pipeline:** Nango → Dagster (`public_raw`) → dbt Staging (`public_staging`) → "
+    "dbt Marts (`public_marts`) → Reports (`public_reports`)"
 )
